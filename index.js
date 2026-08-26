@@ -408,7 +408,7 @@ function wantsStrictJson(url) {
     return !isLocalEndpoint(url);
 }
 
-const KEY_SOURCES = ['tavern_rpg_engine', 'rpg_phone', 'rpg_diary', 'rpg_map_engine', 'rpg_map', 'rpg_dungeons', 'rpg_codex', 'tavern_doors'];
+const KEY_SOURCES = ['tavern_rpg_engine', 'rpg_status_bar', 'tavern_bonds_engine', 'rpg_phone', 'rpg_diary', 'rpg_map_engine', 'rpg_map', 'rpg_dungeons', 'rpg_codex', 'tavern_doors'];
 /* An address you typed always wins. Borrowing used to take the neighbour's URL and
    model along with the key whenever your own pair was incomplete — so pointing this
    at LM Studio or KoboldCpp and leaving the key blank (neither needs one) quietly
@@ -625,9 +625,16 @@ Format:
     let endpointUrl = (apiUrl() || 'https://openrouter.ai/api/v1').replace(/\/$/, '') + '/chat/completions';
 
     for (let i = 0; i < 2; i++) {
+        // A request that never comes back used to leave the panel on "Analyzing..."
+        // forever: there was no timeout anywhere on this path, and the catch below
+        // can only report a request that actually finished. An abort turns a hang
+        // into an ordinary error the panel already knows how to draw.
+        const ctl = new AbortController();
+        const bell = setTimeout(() => ctl.abort(), 45000);
         try {
             const response = await fetch(endpointUrl, {
                 method: 'POST',
+                signal: ctl.signal,
                 headers: { 'Authorization': `Bearer ${apiKey().trim()}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     model: apiModel(),
@@ -657,8 +664,8 @@ Format:
             const jsonMatch = content.match(/\{[\s\S]*\}/);
             return JSON.parse(jsonMatch ? jsonMatch[0] : content);
         } catch (e) {
-            if (i === 1) throw e;
-        }
+            if (i === 1) throw (e && e.name === 'AbortError') ? new Error('timeout') : e;
+        } finally { clearTimeout(bell); }
     }
 }
 
@@ -1308,6 +1315,8 @@ const defaultSettings = {
     demotion: false,             // off by default: stages only ever went up before
     courtship: false,            // the wooing mode: warm gestures, not just moves
     courtshipRate: 180,          // percent multiplier on initiative while wooing
+    charProse: false,            // OFF by default: read what the partner DID in their own reply
+    charProseWeight: 40,         // percent of a full win credited for it — 40 matches the initiative echo
     pauseWhenSolo: true,         // stand still while the Map engine has the player wandering alone
     autoRoster: false,           // open a page for every card in the chat, not only for whoever speaks
     chatStates: {},
@@ -1325,7 +1334,7 @@ let stateReady = false;
 // another's key sends a credential for one provider to a different one, which fails in
 // a way that is very hard to read. Nothing is copied: this is a read at request time,
 // so removing a neighbour just brings back "no key".
-const KEY_SOURCES = ['tavern_rpg_engine', 'rpg_phone', 'rpg_diary', 'rpg_map_engine', 'rpg_map', 'rpg_dungeons'];
+const KEY_SOURCES = ['tavern_rpg_engine', 'rpg_status_bar', 'tavern_bonds_engine', 'rpg_phone', 'rpg_diary', 'rpg_map_engine', 'rpg_map', 'rpg_dungeons', 'rpg_codex', 'tavern_doors'];
 const FALLBACK_URL = 'https://openrouter.ai/api/v1';
 
 /* An address you typed always wins. Borrowing used to take the neighbour's URL and
@@ -1411,6 +1420,9 @@ const I18N = {
         set_demotion: 'Let the relationship fall back a stage if it is neglected or abused',
         set_courtship: 'Courtship mode — partners actively woo you',
         set_courtrate: 'Courtship intensity:',
+        set_charprose: 'Also read what the partner did in their own reply',
+        set_charprosew: 'Credit for it:',
+        hint_charprose: 'Off by default, and deliberately so. Everything else is decided before a single token is generated, which is what makes every swipe of a reply identical. This is the one thing that cannot be: it reads prose that already exists, so swiping re-reads it. The engine reverts the previous swipe before crediting the new one, no dice are rolled, no milestone or new tier can be reached this way, and a turn the partner already opened on their own is skipped so nothing is paid for twice. What it cannot prevent is you swiping until the model writes what you wanted. That is your business — but it is why this is a choice and not the default.',
         roster_add: 'Add someone by hand',
         roster_title: 'Who is in this story?',
         roster_group: 'In this group chat',
@@ -1546,6 +1558,9 @@ const I18N = {
         set_demotion: 'Позволять отношениям откатываться на стадию назад',
         set_courtship: 'Режим ухаживания — за тобой активно ухаживают',
         set_courtrate: 'Интенсивность ухаживания:',
+        set_charprose: 'Читать и то, что партнёр сделал в своём ответе',
+        set_charprosew: 'Засчитывать от полного успеха:',
+        hint_charprose: 'По умолчанию выключено, и намеренно. Всё остальное в движке решается до генерации первого токена — именно поэтому свайпы одного ответа одинаковы. Здесь так не выйдет: читается уже написанная проза, значит свайп прочитает её заново. Движок откатывает предыдущий свайп перед начислением нового, кубик не бросается, веху или новую ступень близости так не получить, а ход, который партнёр и без того открыл сам, пропускается — чтобы одно и то же не оплатилось дважды. Чего он не может — помешать тебе свайпать, пока модель не напишет нужное. Это твоё дело, но именно поэтому здесь галка, а не поведение по умолчанию.',
         roster_add: 'Добавить вручную',
         roster_title: 'Кто участвует в этой истории?',
         roster_group: 'В этом групповом чате',
@@ -1881,7 +1896,7 @@ const STAGE_PHYS = { stranger: 0, acquaintance: 1, friend: 2, close_friend: 3, c
 // branching or a group conversion does not lose the relationship.
 // ============================================================
 function freshState() {
-    return { npcs: {}, active: null, turn: 0, lastReplyTurn: -1, verdict: null, soloPaused: false, dismissed: {}, version: 1 };
+    return { npcs: {}, active: null, turn: 0, lastReplyTurn: -1, verdict: null, soloPaused: false, dismissed: {}, proseLog: {}, version: 1 };
 }
 
 function freshNpc(name, traits, archetype) {
@@ -2996,6 +3011,194 @@ async function classifyIntent(names) {
 }
 
 // ============================================================
+// THE PARTNER'S OWN PROSE — opt-in, and the only part of the engine that reads
+// something the model already wrote.
+//
+// Everything else is settled before generation, which is what makes swipes
+// identical. This cannot be, so it is built the other way round: whatever a
+// previous swipe of the same message credited is REVERTED before the new swipe is
+// read. The ledger below is what makes that possible — it stores the exact
+// amounts that landed, not the amounts that were requested, because caps and
+// clamps mean those differ.
+//
+// Three things it deliberately will not do, whatever the prose says:
+//   * roll a die — this is an echo, never a check
+//   * set a milestone or raise maxTier — a confession or a first night stays the
+//     player's call, and prose cannot unlock a tier the story has not reached
+//   * pay twice for a turn the engine itself already opened via pendingInit
+// ============================================================
+const CLASSIFY_CHAR_SYS = `You label the last reply of a roleplay CHARACTER. Reply ONLY with JSON:
+{"act":"<one label>","warm":"<none|compliment|gift|plan|remember|reassure|apologize|persuade|flirt>","intensity":1|2|3}
+act must be exactly one of: none, flirt, persuade, apologize, reassure, compliment, gift, plan, remember, touch, hold, kiss, heated, sex
+Guidance:
+- Label what the CHARACTER does toward the player, not what the player does and not what the character merely feels, remembers or thinks about.
+- Only count something the character actually did in THIS reply. Reported past events, hypotheticals, dreams and things they decide against = "none".
+- If the character is only answering, describing, or moving through a scene = "none".
+- flirt: teasing or coming on to the player. compliment: praising them plainly. gift: giving or offering something. plan: proposing an outing or a next meeting. remember: bringing up something the player told them earlier. reassure: comforting them. apologize: admitting fault. persuade: talking them into something.
+- touch: brushing, brief contact. hold: hand-holding, embrace, staying close. kiss: a kiss. heated: heavy physical contact short of sex. sex: a sexual encounter.
+- intensity: 1 fleeting, 2 normal, 3 emphatic.
+- "warm" is a SECOND, separate label for whatever else the character did in the same reply. A character often holds someone's hand AND calms them down in one breath; "act" would take the stronger of the two and the other would be lost. Put the quieter one here so both count. It may only be one of the labels listed for "warm" — never a physical one, and never the same label as "act". If there is no second thing, set warm to "none".
+Prefer "none" for both. Most replies are "none".`;
+
+// The warm gestures have no EFFECTS entry of their own — they are not checks —
+// so their payouts live here, matching the initiative table one for one.
+// Which rung each physical act sits on, by index of maxTier. Used to credit an
+// over-eager reply down to the level the story has actually reached.
+const TIER_LADDER = ['touch', 'hold', 'kiss', 'heated', 'sex'];
+
+const PROSE_WARM = {
+    compliment: { mood: 4, attraction: 1 },
+    gift: { mood: 6, affection: 2, comfort: 1 },
+    plan: { mood: 3, excitement: 3, comfort: 1 },
+    remember: { trust: 2, comfort: 2, mood: 4 }
+};
+
+// What the second slot is allowed to be. Physical acts are deliberately absent:
+// two rungs of the ladder in one reply would be exactly the escalation the tier
+// gate exists to stop. Payouts are the same tables the rest of the engine uses.
+const PROSE_SECOND = Object.assign({}, PROSE_WARM, {
+    reassure: EFFECTS.reassure.win,
+    apologize: EFFECTS.apologize.win,
+    persuade: EFFECTS.persuade.win,
+    flirt: EFFECTS.flirt.win
+});
+
+function proseLedger() {
+    if (!state.proseLog || typeof state.proseLog !== 'object') state.proseLog = {};
+    return state.proseLog;
+}
+
+// Undo an earlier swipe of the same message. Straight subtraction, no caps and no
+// pace multiplier: we are removing exactly what landed, and running it back
+// through applyDelta would re-clamp it into something else.
+function revertProse(msgId) {
+    const led = proseLedger();
+    const rec = led[msgId];
+    if (!rec) return;
+    const npc = state.npcs[rec.key];
+    if (npc) {
+        for (const k of Object.keys(rec.delta || {})) {
+            if (DISPS.includes(k)) npc.disp[k] = clamp(npc.disp[k] - rec.delta[k], 0, 100);
+            else if (npc.pulse[k] != null) npc.pulse[k] = clamp(npc.pulse[k] - rec.delta[k], 0, 100);
+        }
+    }
+    delete led[msgId];
+}
+
+// Both engines share one secondary endpoint. Firing the prose read at the same
+// instant as the status bar's own call doubled the request rate on every single
+// message, which is enough to get rate-limited on a free key — and a 429 there
+// stalls the panel, not this. So the read waits its turn, and never queues behind
+// itself while the player swipes.
+let proseBusy = false;
+async function readCharProse(msgId) {
+    if (!settings.enabled || !settings.charProse || !settings.classify) return;
+    if (proseBusy) { dbg('prose read skipped — one already in flight'); return; }
+    if (!state || !ownsChat(getContext().chatId)) return;
+    if (!hasKey() || mapSolo()) return;
+
+    const chat = getContext().chat || [];
+    const msg = chat[msgId];
+    if (!msg || msg.is_user || msg.is_system || !msg.name) return;
+    const text = String(msg.mes || '').trim();
+
+    // Whatever the previous swipe of this very message paid out is taken back
+    // first, so swiping cannot stack. If the new swipe reads as "none", the revert
+    // still stands and the turn is simply worth nothing.
+    revertProse(msgId);
+    if (text.length < 12) return;
+
+    const npc = ensureNpc(msg.name);
+    if (!npc || npc.conflict) return;
+    // The engine already opened this turn on its own and already paid the echo for
+    // it. Reading the prose it asked for would bill the same gesture twice.
+    if (npc.pendingInit) { dbg('prose skipped — initiative already paid this turn', { name: npc.name, move: npc.pendingInit }); return; }
+
+    let res = null;
+    proseBusy = true;
+    try {
+        await new Promise(r => setTimeout(r, 2500));   // let the status bar go first
+        res = await withTimeout(callAI(CLASSIFY_CHAR_SYS, `Character: ${msg.name}\nPlayer is: ${userName()}\n\nReply to label:\n${text.slice(0, 900)}`, 120), 9000);
+    } catch (e) { dbg('prose classify failed', String(e && e.message)); return; }
+    finally { proseBusy = false; }
+
+    const actRaw = String(res && res.act || 'none');
+    const warmRaw = String(res && res.warm || 'none');
+    const A = ACTS[actRaw];
+    const warm = PROSE_WARM[actRaw];
+    // The gesture is only a separate payout when it is not already the main label.
+    const extra = (warmRaw !== actRaw && !ACTS[warmRaw]?.tier) ? PROSE_SECOND[warmRaw] : null;
+    if (actRaw === 'none' && !extra) return;
+    if (actRaw !== 'none' && !A && !warm) return;
+    let act = actRaw;
+    if (A && A.kind === 'intimacy') {
+        if (!settings.intimacy) return;
+        // Prose may confirm the ground already stood on, never claim new ground.
+        // But dropping the whole reply for it was too blunt: a model that writes an
+        // embrace before the story has earned one has still written contact, and the
+        // touch inside that embrace really did happen. So it is credited DOWN to the
+        // furthest rung actually reached, never up. Escalation stays impossible —
+        // maxTier is still only ever raised by a real check.
+        const ceiling = TIER_LADDER[npc.maxTier];
+        if ((A.tier || 1) > npc.maxTier + 1) {
+            if (!ceiling) { dbg('prose ignored — no rung reached yet', { act: actRaw }); return; }
+            dbg('prose downgraded to the reached rung', { from: actRaw, to: ceiling, maxTier: npc.maxTier });
+            act = ceiling;
+        }
+    }
+
+    const intensity = clamp(num(res.intensity, 2), 1, 3);
+    const scale = clamp(num(settings.charProseWeight, 40), 0, 100) / 100 * (0.75 + intensity * 0.125);
+    const main = (actRaw === 'none') ? null : (PROSE_WARM[act] || (EFFECTS[act] && EFFECTS[act].win) || null);
+    // A gesture alongside something bigger is a grace note, not a second event, so
+    // it pays half. Both together still cannot exceed what one full win would give.
+    const src = {};
+    for (const k of Object.keys(main || {})) src[k] = main[k];
+    for (const k of Object.keys(extra || {})) src[k] = num(src[k], 0) + extra[k] * (main ? 0.5 : 1);
+    // Letting the second slot carry reassure and apologize is what makes a scene
+    // like "he steadies her AND calms her down" readable at all — but those two are
+    // the strongest movers in the game, and stacked onto a physical act they were
+    // starting to pay out like a won check. Hence a ceiling, and one stated as a
+    // rule rather than a number: doing two things at once may never pay more than
+    // the better of the two would have paid alone. Only the overlap is trimmed, and
+    // only when there really are two sources — a lone act keeps its full value, and
+    // a stat only one of them touches is left alone. Pulse is exempt: it decays.
+    if (main && extra) {
+        for (const k of Object.keys(src)) {
+            if (!DISPS.includes(k)) continue;
+            const ceiling = Math.max(num(main[k], 0), num(extra[k], 0));
+            if (ceiling > 0 && src[k] > ceiling) src[k] = ceiling;
+        }
+    }
+    if (!Object.keys(src).length) return;
+
+    // Pulse answers nearly in full — the temperature of a scene is the one thing
+    // prose really does establish, and it bleeds off by itself within a few turns.
+    // Dispositions are the part that never decays, so they get the discount.
+    const echo = {};
+    for (const k of Object.keys(src)) echo[k] = src[k] * (DISPS.includes(k) ? scale : Math.min(1, scale * 2));
+
+    const before = Object.assign({}, npc.disp, npc.pulse);
+    applyDelta(npc, echo);
+    const delta = {};
+    for (const k of Object.keys(before)) {
+        const now = DISPS.includes(k) ? npc.disp[k] : npc.pulse[k];
+        if (Math.abs(now - before[k]) > 1e-9) delta[k] = now - before[k];
+    }
+
+    const led = proseLedger();
+    led[msgId] = { key: npc.key, act, warm: warmRaw, delta };
+    // The ledger is only ever needed for messages still on screen and swipeable.
+    const keys = Object.keys(led);
+    if (keys.length > 40) for (const k of keys.sort((a, b) => a - b).slice(0, keys.length - 40)) delete led[k];
+
+    dbg('prose read', { name: npc.name, act: actRaw, credited: act, warm: warmRaw, intensity, delta });
+    // No checkStage() here on purpose. A stage is a thing the story decides; letting
+    // prose promote a relationship would mean the model narrating its own promotion.
+    saveState(true); updateInjections(); renderAlbum();
+}
+
+// ============================================================
 // PROMPT ASSEMBLY
 // Three keys, deliberately separate. The profile is stable across turns so it
 // stays cacheable; the verdict is volatile and sits at depth 0 where it cannot be
@@ -3914,6 +4117,12 @@ function settingsHtml() {
                 <label>${t('set_courtrate')}</label>
                 <input type="number" id="tbe-courtrate" class="text_pole" min="100" max="400" style="width:60px;"> %
             </div>
+            <label class="checkbox_label"><input type="checkbox" id="tbe-charprose"> ${t('set_charprose')}</label>
+            <div class="flex-container alignitemscenter flexgap5 margin-b-10">
+                <label>${t('set_charprosew')}</label>
+                <input type="number" id="tbe-charprosew" class="text_pole" min="0" max="100" style="width:60px;"> %
+            </div>
+            <div class="tbe-hint">${t('hint_charprose')}</div>
             <div class="flex-container alignitemscenter flexgap5 margin-b-10" style="margin-top:8px;">
                 <label>${t('set_initrate')}</label>
                 <input type="number" id="tbe-initrate" class="text_pole" min="0" max="300" style="width:60px;"> %
@@ -3986,6 +4195,7 @@ function setupUI() {
     bindCheck('#tbe-initiative', 'initiative');
     bindCheck('#tbe-demotion', 'demotion');
     bindCheck('#tbe-courtship', 'courtship', updateInjections);
+    bindCheck('#tbe-charprose', 'charProse');
     bindCheck('#tbe-gm', 'gmMode', renderAlbum);
     bindCheck('#tbe-debug', 'debug');
     // Silence is the worst failure mode here: with no key the module loads, shows a
@@ -4003,6 +4213,7 @@ function setupUI() {
     bindText('#tbe-model', 'model');
     bindNum('#tbe-initrate', 'initiativeRate', 0, 300);
     bindNum('#tbe-courtrate', 'courtshipRate', 100, 400);
+    bindNum('#tbe-charprosew', 'charProseWeight', 0, 100);
     bindNum('#tbe-initf', 'initFemale', 0, 200);
     bindNum('#tbe-initm', 'initMale', 0, 200);
     bindNum('#tbe-difficulty', 'difficulty', 25, 300);
@@ -4087,7 +4298,7 @@ const TBE_API = {
     settings: () => settings,
     state: () => state,
     npcFor: (name) => { try { return (state && state.npcs) ? (state.npcs[nameKey(name)] || null) : null; } catch (e) { return null; } },
-    npcPageHtml, toggleMilestone, rerollProfile, forgetNpc,
+    npcPageHtml, toggleMilestone, rerollProfile, forgetNpc, readCharProse,
     saveState, updateInjections, renderAlbum, renderMainUI, ensureButton,
     loadSettings, pruneOldStates, loadState, setupUI,
     freshState: () => { state = freshState(); },
@@ -4509,6 +4720,9 @@ jQuery(() => {
         // Bonds first: it is what registers whoever just spoke, so the relationship
         // tab has a page to draw by the time the block is mounted.
         try { TBE.onCharacterReply(); } catch (e) { console.error('[Bonds] reply failed:', e); }
+        // Opt-in, and always after the bookkeeping above: it reads the prose that
+        // was just generated rather than deciding anything about it.
+        TBE.readCharProse(messageId).catch(e => console.error('[Bonds] prose read failed:', e));
         const msg = getContext().chat[messageId];
         if (msg && !msg.is_user && !msg.is_system) {
             setTimeout(async () => {
@@ -4520,6 +4734,10 @@ jQuery(() => {
     });
 
     eventSource.on(event_types.MESSAGE_SWIPED, async (messageId) => {
+        // Deliberately NOT onCharacterReply: the turn was already processed and
+        // re-running it would tick the pulse twice. Only the prose is re-read, and
+        // readCharProse reverts the previous swipe's credit before doing so.
+        TBE.readCharProse(messageId).catch(e => console.error('[Bonds] prose read failed:', e));
         const msg = getContext().chat[messageId];
         if (msg && !msg.is_user && !msg.is_system) {
             setTimeout(async () => {
