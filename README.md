@@ -89,3 +89,6 @@ Fully supported. Each speaking character gets their own status, and the relation
 ## 🌍 Languages
 
 Bilingual UI: **English / Русский**. AI-generated summaries follow the selected interface language.
+
+---
+Credits. Inspired in part by [MVU Game Maker](https://github.com/KritBlade/MVU_Game_Maker) by KritBlade, particularly its approach to persistent personality, relationship progression, and dice-based social interactions.
