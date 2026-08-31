@@ -941,3 +941,12 @@
     .rpg-pane-bonds .tbe-row-label { flex-basis: 104px; }
     .rpg-tab { padding: 6px 9px 7px; font-size: .72rem; }
 }
+
+/* GM: archetype picker — sits directly under the gender control and matches it */
+#tbe-body .tbe-archpick { display: flex; align-items: center; gap: 8px; margin: 6px 0 2px; }
+#tbe-body .tbe-arch-sel {
+    flex: 1; min-width: 0; font: inherit; font-size: .82rem; padding: 3px 6px;
+    border-radius: 5px; border: 1px solid var(--tbe-line, #c8b98f);
+    background: rgba(255,252,244,.7); color: inherit; cursor: pointer;
+}
+#tbe-body .tbe-arch-sel:hover { border-color: var(--tbe-ink, #8a6a3c); }

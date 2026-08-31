@@ -1415,6 +1415,8 @@ const I18N = {
         set_pace: 'Relationship pace:',
         hint_pace: 'Scales how fast warmth accumulates — gains only, damage is untouched. 100% is a long arc of several hundred messages to Girlfriend; 200% roughly halves it.',
         set_gm: 'GM / edit mode',
+        gm_arch: 'Archetype:', gm_arch_card: 'GM: set the archetype by hand — traits are reset to match it',
+        gm_arch_set: '{name} is now {arch}.',
         gm_gender: 'Gender:', g_f: 'Female', g_m: 'Male',
         set_defgender: 'Assume this gender when the card is unclear:',
         set_demotion: 'Let the relationship fall back a stage if it is neglected or abused',
@@ -1553,6 +1555,8 @@ const I18N = {
         set_pace: 'Темп отношений:',
         hint_pace: 'Ускоряет накопление тепла — только рост, урон не затрагивается. 100% — длинная дуга в несколько сотен сообщений до «девушки», 200% сокращает её примерно вдвое.',
         set_gm: 'GM / режим редактирования',
+        gm_arch: 'Архетип:', gm_arch_card: 'ГМ: задать архетип вручную — черты подстроятся под него',
+        gm_arch_set: '{name} теперь {arch}.',
         gm_gender: 'Пол:', g_f: 'Женский', g_m: 'Мужской',
         set_defgender: 'Пол по умолчанию, если по карточке не понять:',
         set_demotion: 'Позволять отношениям откатываться на стадию назад',
@@ -1733,6 +1737,11 @@ const ARCHETYPES = {
     drifter: { dominance: 30, confidence: 45, shyness: 45, patience: 35, curiosity: 80, stability: 25, impulse: 75, propriety: 15 },
     devotee: { dominance: 20, confidence: 40, shyness: 55, patience: 80, curiosity: 40, stability: 60, impulse: 45, propriety: 65 }
 };
+
+/* The order the GM picker lists them in — read from the table above rather than
+   written out a second time, so a new archetype shows up in the list simply by
+   existing. */
+const ARCH_ORDER = Object.keys(ARCHETYPES);
 
 // Traits are exported to the prompt as adjectives, never as numbers. A model writes
 // far better prose from "impatient, used to giving orders" than from "Patience: 22",
@@ -2271,7 +2280,19 @@ async function buildProfile(npc) {
     if (guess) npc.gender = guess;
     if (!card) return;
     try {
-        const res = await callAI(PROFILE_SYS, card, 300);
+        /* Raised from 300. The answer itself is about fifty tokens, so 300 looked
+           generous — but a reasoning model spends its budget thinking BEFORE it
+           writes, runs out, and returns nothing usable. The archetype then falls
+           back to pragmatist, which is why some people saw every character come out
+           a pragmatist while others never did: it depended entirely on the model.
+
+           Unused budget costs nothing — only generated tokens are billed — so the
+           ceiling is set where even a long deliberation fits.
+
+           The two classifiers below are deliberately NOT raised: they run on every
+           message behind a 9-second timeout, and a bigger allowance there would just
+           mean waiting for something that gets thrown away. */
+        const res = await callAI(PROFILE_SYS, card, 5000);
         const g = String(res.gender || '').toLowerCase();
         if (g === 'm' || g === 'f') npc.gender = g;
         const arch = String(res.archetype || '').toLowerCase();
@@ -3696,6 +3717,19 @@ function npcPageHtml(npc) {
             <button class="tbe-gender-opt${npc.gender === 'm' ? ' on' : ''}" data-g="m">${escapeHtml(t('g_m'))}</button>
         </div>`;
 
+    /* Archetype picker, GM mode only — same place and the same shape as the gender
+       control right above it. Shown only when editing, because for normal play the
+       archetype is something the model reads off the card, not a dial. */
+    if (settings.gmMode) {
+        const opts = ARCH_ORDER.map(a =>
+            `<option value="${a}"${npc.archetype === a ? ' selected' : ''}>${escapeHtml(gform(t('arch_' + a), npc.gender))}</option>`
+        ).join('');
+        html += `<div class="tbe-archpick" title="${escapeHtml(t('gm_arch_card'))}">
+            <span class="tbe-gender-label">${escapeHtml(t('gm_arch'))}</span>
+            <select class="tbe-arch-sel">${opts}</select>
+        </div>`;
+    }
+
     if (npc.conflict) {
         const style = CONFLICT_STYLE[lang()][npc.conflict.style] || '';
         html += `<div class="tbe-conflict"><i class="fa-solid fa-fire"></i> ${escapeHtml(npc.conflict.topic)} — ${escapeHtml(style)}</div>`;
@@ -3970,6 +4004,22 @@ function bindPageEvents() {
     $('#tbe-body .tbe-gender-opt').off('click.tbe').on('click.tbe', function () {
         npc.gender = $(this).data('g') === 'm' ? 'm' : 'f';
         saveState(true); renderAlbum(); updateInjections();
+    });
+
+    /* Setting the archetype by hand does what the model's answer does: it takes the
+       archetype's trait profile as the new baseline. Otherwise the label would say
+       "Schemer" over a pragmatist's numbers, and everything downstream — checks,
+       ceilings, the phrases on the card — would still behave like a pragmatist.
+
+       The disposition, the stage, the milestones and the history are NOT touched:
+       those are what happened between these two, and they do not belong to a type. */
+    $('#tbe-body .tbe-arch-sel').off('change.tbe').on('change.tbe', function () {
+        const a = String($(this).val() || '');
+        if (!ARCHETYPES[a]) return;
+        npc.archetype = a;
+        npc.traits = clone(ARCHETYPES[a]);
+        saveState(true); renderAlbum(); updateInjections();
+        toastr.success(t('gm_arch_set', { name: npc.name, arch: gform(t('arch_' + a), npc.gender) }));
     });
 
     $('#tbe-body .tbe-chip').off('click.tbe').on('click.tbe', function () {
