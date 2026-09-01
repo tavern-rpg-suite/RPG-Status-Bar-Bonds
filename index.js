@@ -2275,6 +2275,12 @@ async function buildProfile(npc) {
     if (npc.profiled) return;
     npc.profiled = true;                         // claim it now: a second reply must not fire a second request
     if (!settings.autoProfile || !hasKey()) return;
+    /* The chat this profile is being built FOR. The request can take twenty seconds on
+       a reasoning model, and if the chat is switched meanwhile the answer would be
+       written into an npc object belonging to a chat nobody is looking at — and would
+       redraw the album of the one they are. */
+    const myChat = currentChatId;
+
     const card = cardTextFor(npc.name);
     const guess = guessGender(card || npc.name);
     if (guess) npc.gender = guess;
@@ -2293,6 +2299,13 @@ async function buildProfile(npc) {
            message behind a 9-second timeout, and a bigger allowance there would just
            mean waiting for something that gets thrown away. */
         const res = await callAI(PROFILE_SYS, card, 5000);
+        if (myChat !== currentChatId) {
+            // Left this chat while waiting. The flag is handed back so the profile is
+            // built properly the next time this character comes up, instead of being
+            // marked done and never attempted again.
+            npc.profiled = false;
+            return;
+        }
         const g = String(res.gender || '').toLowerCase();
         if (g === 'm' || g === 'f') npc.gender = g;
         const arch = String(res.archetype || '').toLowerCase();
@@ -2306,6 +2319,8 @@ async function buildProfile(npc) {
         toastr.success(t('toast_profile', { name: npc.name }));
     } catch (e) {
         console.warn('[Bonds] profile failed', e);
+        // Same reasoning: a failed request must not count as "already profiled".
+        npc.profiled = false;
         toastr.warning(t('toast_profile_err'));
     }
 }
