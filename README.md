@@ -1,5 +1,9 @@
 # RPG-Status Bar+Bonds
 
+<p align="center">
+<img width="1671" height="941" alt="701ddadc-30f1-4def-b287-6d0f93f66296" src="https://github.com/user-attachments/assets/19816328-af3c-4e12-93ab-a382835ed422" />
+</p>
+
 A SillyTavern extension that gives your characters a **living status bar** — health, mana, stamina, mood, trust, attraction, relationships, and more.
 
 The status is updated from the story and shown directly under character messages. Different systems can work independently or together, so you can use RPG stats, relationship tracking, or both.
@@ -89,6 +93,11 @@ Fully supported. Each speaking character gets their own status, and the relation
 ## 🌍 Languages
 
 Bilingual UI: **English / Русский**. AI-generated summaries follow the selected interface language.
+
+---
+## ✨ Screenshots
+
+<img width="1895" height="872" alt="Preview-RPG Status Bar" src="https://github.com/user-attachments/assets/29df674c-e348-440d-9ce2-6cb9201e78c7" />
 
 ## Credits
 
