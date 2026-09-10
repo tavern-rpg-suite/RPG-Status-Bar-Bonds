@@ -1,7 +1,7 @@
 # RPG-Status Bar+Bonds
 
 <p align="center">
-<img width="1671" height="941" alt="701ddadc-30f1-4def-b287-6d0f93f66296" src="https://github.com/user-attachments/assets/19816328-af3c-4e12-93ab-a382835ed422" />
+<img width="1671" height="941" alt="701ddadc-30f1-4def-b287-6d0f93f662962" src="https://github.com/user-attachments/assets/267078c5-3491-4eec-8bae-f6f43656e7de" />
 </p>
 
 A SillyTavern extension that gives your characters a **living status bar** — health, mana, stamina, mood, trust, attraction, relationships, and more.
