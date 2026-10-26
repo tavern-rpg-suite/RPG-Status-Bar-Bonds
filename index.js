@@ -744,7 +744,7 @@ function renderInlineStatus(messageId, charName, statsData, isLoading = false, i
 
         setHeader(anyCritical ? 'fa-triangle-exclamation' : 'fa-heart-pulse', shortSummary, anyCritical);
 
-        pane.innerHTML = `
+        const html = `
             ${barsHtml}
             <div class="rpg-body-footer">
                 <div class="rpg-status-summary">${escapeHtml(statsData.summary)}</div>
@@ -753,15 +753,33 @@ function renderInlineStatus(messageId, charName, statsData, isLoading = false, i
                 </button>
             </div>
         `;
+        /* A folded block shows only its header line (the name and the short summary are set
+           above). The bars are written into the page when the block is opened — a long chat
+           kept every block's bars in the page, folded or not. */
+        const wrap = container.querySelector('.rpg-accordion-wrapper');
+        if (wrap && !wrap.classList.contains('expanded')) {
+            pane.innerHTML = '';
+            pane.setAttribute('data-has', '1');
+            container.__sbPaint = () => { container.__sbPaint = null; pane.removeAttribute('data-has'); pane.innerHTML = html; bindUpdate(); };
+            if (typeof window.RPGSB_SYNC === 'function') window.RPGSB_SYNC(container);
+            return;
+        }
+        container.__sbPaint = null;
+        pane.removeAttribute('data-has');
+        pane.innerHTML = html;
     }
+    if (isLoading || isError || !(statsData && statsData.stats)) { container.__sbPaint = null; pane.removeAttribute('data-has'); }
 
-    const updateBtn = pane.querySelector('.rpg-force-update');
-    if (updateBtn) {
-        updateBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            updateBtn.classList.add('rpg-force-spinning');
-            await processCharacterStatus(messageId, charName, true);
-        });
+    bindUpdate();
+    function bindUpdate() {
+        const updateBtn = pane.querySelector('.rpg-force-update');
+        if (updateBtn) {
+            updateBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                updateBtn.classList.add('rpg-force-spinning');
+                await processCharacterStatus(messageId, charName, true);
+            });
+        }
     }
 
     // MERGED: the pane now has content, so the tab row may need to appear.
@@ -4462,6 +4480,8 @@ function ensureShell(messageId, charName) {
     header.addEventListener('click', () => {
         header.classList.toggle('expanded');
         wrapper.classList.toggle('expanded');
+        // the status bars of a folded block are written in now, when it opens
+        if (wrapper.classList.contains('expanded') && typeof container.__sbPaint === 'function') container.__sbPaint();
         paintIfNeeded(container);
     });
 
@@ -4488,6 +4508,7 @@ function paneHasContent(container, key) {
     const pane = container.querySelector('.rpg-pane-status');
     if (!pane) return false;
     if (pane.getAttribute('data-empty') === '1') return false;
+    if (pane.getAttribute('data-has') === '1') return true;     // bars waiting to be written when it opens
     return pane.innerHTML.trim().length > 0;
 }
 
