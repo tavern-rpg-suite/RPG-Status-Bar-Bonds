@@ -112,6 +112,7 @@ const I18N = {
         new_stat_name: "New stat",
         new_stat_desc: "Description...",
         ui_influence: "Let the status steer the reply",
+        ui_scene_only: "Only those in the scene (the Scene Card's list, or who spoke in the last N replies)", ui_scene_n: "N replies",
         ui_influence_title: "Adds a short plain-language state line at depth 0, the same way the relationship verdict works: the model is told what is already true and writes from it.",
         tab_status: "Status",
         tab_bonds: "Relationship",
@@ -246,6 +247,7 @@ const I18N = {
         new_stat_name: "Новый стат",
         new_stat_desc: "Описание...",
         ui_influence: "Статус влияет на ответ",
+        ui_scene_only: "Только те, кто в сцене (список Scene Card или кто говорил в последних N ответах)", ui_scene_n: "N ответов",
         ui_influence_title: "Добавляет короткую строку состояния на глубину 0 — так же, как работает вердикт отношений: модели сообщают, что уже произошло, и она пишет от этого.",
         tab_status: "Статус",
         tab_bonds: "Отношения",
@@ -340,6 +342,8 @@ const defaultSettings = {
     injectDepth: 0,
     injectContext: true,
     influenceReply: true,   // MERGED: the live-state directive at depth 0
+    sceneOnly: true,        // the model hears only of those in the scene, not of the whole group
+    sceneReplies: 6,        // "in the scene": on the Scene Card's list, or spoke in the last N replies
     strictJson: true,
     perChatProfiles: false,
     profiles: {}
@@ -987,9 +991,34 @@ function bandWord(val, dynamicColor) {
 // other half, borrowed from the Bonds engine's verdict slot: a short plain-language
 // line at depth 0, stating what is ALREADY true, plus one rule telling the model to
 // write from it. No table, no numbers for the model to negotiate with.
+/* Who the model hears about: in a group, everyone in it sits in the chat's cast — the ones at home
+   in Durham as much as the ones on the train. "In the scene" is decided by code, no call: not muted
+   in the group, and on the Scene Card's list of who is present, or a speaker of the last N replies
+   (the last two always count — the card may lag a reply behind). Nobody found: everyone, as before. */
+function sceneCharacters() {
+    const all = getActiveCharacters();
+    if (settings.sceneOnly === false || all.length <= 1) return all;
+    let muted = [];
+    try { const g = selected_group ? groups.find(x => x.id === selected_group) : null; muted = g && Array.isArray(g.disabled_members) ? g.disabled_members : []; } catch (e) { muted = []; }
+    const awake = all.filter(c => !muted.includes(c.avatar));
+    const first = n => String(n || '').trim().toLowerCase().split(/\s+/)[0];
+    const here = new Set();
+    const chat = getContext().chat || [];
+    const bots = chat.filter(m => m && !m.is_user && !m.is_system && m.name);
+    bots.slice(-Math.max(2, parseInt(settings.sceneReplies, 10) || 6)).forEach(m => here.add(first(m.name)));
+    let listed = null;
+    try {
+        const sc = window.RPG && window.RPG.scene && window.RPG.scene.available && window.RPG.scene.get ? window.RPG.scene.get() : null;
+        if (sc && Array.isArray(sc.characters) && sc.characters.length) listed = sc.characters.map(c => first(c && (c.name || c)));
+    } catch (e) { listed = null; }
+    if (listed) { here.clear(); listed.forEach(n => here.add(n)); bots.slice(-2).forEach(m => here.add(first(m.name))); }
+    const out = awake.filter(c => here.has(first(c.name)));
+    return out.length ? out : awake;
+}
+
 function buildStatusDirective() {
     const lines = [];
-    getActiveCharacters().forEach(char => {
+    sceneCharacters().forEach(char => {
         const p = settings.profiles[profileKey(char.name)];
         if (!p || !Array.isArray(p.stats) || !p.stats.length) return;
         refreshLinkedStats(p);
@@ -1010,17 +1039,22 @@ function updateContextInjection() {
     }
 
     let injectionText = "\n[System Notes - Character States]\n";
-    const activeChars = getActiveCharacters();
+    const activeChars = sceneCharacters();
+    // the reply directive below already carries each character's condition: said once, not twice
+    const inDirective = new Set();
+    if (settings.influenceReply) activeChars.forEach(c => { const p = settings.profiles[profileKey(c.name)]; if (p && Array.isArray(p.stats) && p.stats.length) inDirective.add(c.name); });
+    let noted = 0;
 
     activeChars.forEach(char => {
         const p = settings.profiles[profileKey(char.name)];
-        if (!p) return;
+        if (!p || inDirective.has(char.name)) return;
+        noted++;
         refreshLinkedStats(p);
         const linked = (p.stats || []).filter(st => st.link).map(st => `${st.name} ${st.value}/100`).join(', ');
         injectionText += `${char.name}: ${p.summary}${linked ? ` (${linked})` : ''}\n`;
     });
 
-    setExtensionPrompt(PROMPT_KEY, injectionText, 2, settings.injectDepth, false, extension_prompt_roles.SYSTEM);
+    setExtensionPrompt(PROMPT_KEY, noted ? injectionText : '', 2, settings.injectDepth, false, extension_prompt_roles.SYSTEM);
 
     let directive = '';
     if (settings.influenceReply) {
@@ -1129,6 +1163,8 @@ function buildSettingsHtml() {
             ${sub(t('ui_gen'), `
                 <label class="checkbox_label" title="${t('ui_inject_title')}"><input type="checkbox" id="rpg-inject-context"> <span>${t('ui_inject')}</span></label>
                 <label class="checkbox_label" title="${t('ui_influence_title')}"><input type="checkbox" id="rpg-influence"> <span>${t('ui_influence')}</span></label>
+                <label class="checkbox_label"><input type="checkbox" id="rpg-scene-only"> <span>${t('ui_scene_only')}</span></label>
+                <div class="rpg-srow rpg-in"><label for="rpg-scene-n">${t('ui_scene_n')}</label><input type="number" id="rpg-scene-n" class="text_pole" min="2" max="40"></div>
                 <label class="checkbox_label" title="${t('ui_per_chat_title')}"><input type="checkbox" id="rpg-per-chat"> <span>${t('ui_per_chat')}</span></label>
                 <div class="rpg-srow"><label for="rpg-freq">${t('ui_update_every').replace(/:\s*$/, '')}, ${t('ui_messages')}</label><input type="number" id="rpg-freq" class="text_pole" min="1" max="15"></div>
                 <div class="rpg-srow" title="${t('ui_inject_depth_title')}"><label for="rpg-inject-depth">${t('ui_inject_depth').replace(/:\s*$/, '')}</label><input type="number" id="rpg-inject-depth" class="text_pole" min="0" max="100"></div>`)}
@@ -1289,6 +1325,8 @@ function mountSettings() {
     $('#rpg-inject-depth').val(settings.injectDepth).on('change', function () { settings.injectDepth = Math.max(0, parseInt($(this).val()) || 0); $(this).val(settings.injectDepth); saveSettings(); updateContextInjection(); });
     $('#rpg-inject-context').prop('checked', settings.injectContext).on('change', function () { settings.injectContext = this.checked; saveSettings(); updateContextInjection(); });
     $('#rpg-influence').prop('checked', settings.influenceReply).on('change', function () { settings.influenceReply = this.checked; saveSettings(); updateContextInjection(); });
+    $('#rpg-scene-only').prop('checked', settings.sceneOnly !== false).on('change', function () { settings.sceneOnly = this.checked; saveSettings(); updateContextInjection(); });
+    $('#rpg-scene-n').val(settings.sceneReplies || 6).on('change', function () { settings.sceneReplies = Math.max(2, Math.min(40, parseInt(this.value, 10) || 6)); this.value = settings.sceneReplies; saveSettings(); updateContextInjection(); });
     $('#rpg-per-chat').prop('checked', settings.perChatProfiles).on('change', function () {
         settings.perChatProfiles = this.checked;
         saveSettings();
@@ -6422,7 +6460,10 @@ jQuery(() => {
     // costs a delay, never a lost turn.
     eventSource.on(event_types.MESSAGE_SENT, async () => { await TBE.onPlayerMessage(); });
 
+    // who is in the scene changes with each reply and with the Scene Card: the status note follows
+    window.addEventListener('rpg:scene-updated', () => { try { SB.updateContextInjection(); } catch (e) { /* next reply */ } });
     eventSource.on(event_types.MESSAGE_RECEIVED, async (messageId) => {
+        try { SB.updateContextInjection(); } catch (e) { console.warn('[RPG Status Bar] note', e); }
         // Bonds first: it is what registers whoever just spoke, so the relationship
         // tab has a page to draw by the time the block is mounted.
         try { TBE.onCharacterReply(); } catch (e) { console.error('[Bonds] reply failed:', e); }
