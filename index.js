@@ -1659,7 +1659,7 @@ const I18N = {
         p_check: 'CHECK',
         p_vs: 'vs DC',
         p_stay_failed: 'The attempt failed. Write the refusal plainly — no hidden warmth, no "{he} secretly liked it", do not replay the moment.',
-        p_stay_won: 'The attempt landed. Let her respond in kind, within her character.',
+        p_stay_won: 'The attempt landed. Let {him} respond in kind, within {his} character.',
         p_crit_fail: 'It went badly wrong. {He} reacts sharply and the moment sours.',
         p_crit_win: 'It landed better than expected. {He} is visibly moved.',
         p_walk: '{name} is done with this. {He} ends the conversation and leaves.',
@@ -1668,7 +1668,7 @@ const I18N = {
         p_conflict_end: 'The argument is over — {name} and {user} have made peace.',
         p_init: '{name} makes the first move: {what}. {He} starts it, unprompted.',
         p_stage_up: '{name} and {user} are now: {stage}.',
-        p_remembers: 'She remembers',
+        p_remembers: '{He} remembers',
         p_toward: 'Toward {user}',
         p_now: 'Now',
         init_flirt: '{he} flirts', init_plan: '{he} suggests something to do together',
@@ -3484,7 +3484,7 @@ function buildProfileText() {
         bits.push(`${t('p_now')}: ${moodWord(npc)}`);
         let block = gform(`[${line1} ${bits.join('. ')}.]`, npc.gender);
         const evN = clamp(num(settings.promptEvents, 2), 0, 10);
-        if (wide && evN && npc.events.length) block += `\n[${t('p_remembers')}: ${npc.events.slice(-evN).join('; ')}.]`;
+        if (wide && evN && npc.events.length) block += `\n[${gform(t('p_remembers'), npc.gender)}: ${npc.events.slice(-evN).join('; ')}.]`;
         if (wide && settings.courtship && npc.disp.attraction > 25) {
             block += `\n[${gform(t('p_courting', { name: npc.name, user: you }), npc.gender)}]`;
         }
@@ -3929,7 +3929,7 @@ function npcPageHtml(npc) {
     html += `</div>`;
 
     if (npc.events.length) {
-        html += `<div class="tbe-sect">${escapeHtml(t('p_remembers'))}</div><div class="tbe-events">`;
+        html += `<div class="tbe-sect">${escapeHtml(gform(t('p_remembers'), npc.gender))}</div><div class="tbe-events">`;
         for (const e of npc.events.slice().reverse()) {
             html += `<div class="tbe-event"><i class="tbe-seal-dot"></i>${escapeHtml(e)}</div>`;
         }
@@ -4464,6 +4464,18 @@ window.BONDS.relations = {
     get: (name) => {
         const n = state && state.npcs ? state.npcs[nameKey(name)] : null;
         return n ? { name: n.name, stage: n.stage, disp: clone(n.disp), pulse: clone(n.pulse), traits: clone(n.traits), conflict: !!n.conflict } : null;
+    },
+    /* The relationship in words, for the diary's People page (read-only), and one level 0–100 for its
+       memory: the mean of trust, comfort, respect and affection (attraction is not "how close").
+       Found by the name or by the first word of it ("Sebastian Moran" → "Moran"'s page and back). */
+    describe: (name) => {
+        if (!state || !state.npcs || !name) return null;
+        const k = nameKey(name), f = k.split(/[\s(]+/)[0];
+        const n = state.npcs[k] || Object.values(state.npcs).find(x => { const xk = nameKey(x.name); return xk.split(/[\s(]+/)[0] === f || k.split(/[\s(]+/).includes(xk); });
+        if (!n) return null;
+        const d = n.disp || {};
+        const level = Math.round(['trust', 'comfort', 'respect', 'affection'].reduce((a, x) => a + clamp(num(d[x], 0), 0, 100), 0) / 4);
+        return { name: n.name, stage: stageName(n), toward: dispPhrases(n, 3), now: moodWord(n), level, conflict: !!n.conflict, seen: num(n.seen, 0) };
     },
     // Other modules can nudge the mood (a gift, a won duel) without touching traits.
     nudge: (name, delta) => {
