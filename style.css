@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,500&family=Caveat:wght@500;600&family=PT+Mono&family=Special+Elite&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;1,500&family=Caveat:wght@500;600&family=PT+Mono&family=Special+Elite&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Playfair+Display+SC:wght@700&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap');
 
 /* ============================================
    RPG STATUS BAR 3.5 - SMOOTH ACCORDION
@@ -950,3 +950,256 @@
     background: rgba(255,252,244,.7); color: inherit; cursor: pointer;
 }
 #tbe-body .tbe-arch-sel:hover { border-color: var(--tbe-ink, #8a6a3c); }
+
+/* ============================================================
+   THE CHARACTER TAB — needs, the cycle, ailments, pockets
+   The block's own dark skin; one compact column, nothing taller than it needs.
+   ============================================================ */
+.rpg-pane-body .rbd { color: #ccd6f6; font-size: .84rem; }
+.rpg-pane-body .rbd-who { display: flex; flex-wrap: wrap; gap: 5px; margin: -2px 0 10px; }
+.rpg-pane-body .rbd-chip { padding: 3px 10px; border-radius: 999px; font-size: .74rem; cursor: pointer; color: #a8b2d1; border: 1px solid rgba(139, 92, 246, .3); background: rgba(139, 92, 246, .08); }
+.rpg-pane-body .rbd-chip.on { color: #fff; border-color: rgba(233, 69, 96, .6); background: rgba(233, 69, 96, .18); }
+.rpg-pane-body .rbd-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 9px; font-size: .74rem; color: #7b849e; letter-spacing: .03em; }
+.rpg-pane-body .rbd-mod { padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .1); color: #a8b2d1; white-space: nowrap; cursor: help; }
+.rpg-pane-body .rbd-mod.bad { color: #ffb0a6; border-color: rgba(233, 69, 96, .45); background: rgba(233, 69, 96, .1); }
+.rpg-pane-body .rbd-mod.good { color: #9dffcf; border-color: rgba(67, 160, 71, .45); background: rgba(67, 160, 71, .1); }
+.rpg-pane-body .rbd-needs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px 16px; margin-bottom: 10px; }
+.rpg-pane-body .rbd-need { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.rpg-pane-body .rbd-need-i { width: 1.2em; text-align: center; }
+.rpg-pane-body .rbd-need-l { flex: 0 0 62px; font-size: .76rem; font-weight: 600; color: #a8b2d1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rpg-pane-body .rbd-need-bar { flex: 1; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .05); overflow: hidden; }
+.rpg-pane-body .rbd-need-bar > span { display: block; height: 100%; border-radius: 3px; transition: width .5s cubic-bezier(.4, 0, .2, 1); }
+.rpg-pane-body .rbd-need.sat .rbd-need-bar > span { background: linear-gradient(90deg, #fb8c00, #ffd740); }
+.rpg-pane-body .rbd-need.hyd .rbd-need-bar > span { background: linear-gradient(90deg, #00acc1, #56e0ef); }
+.rpg-pane-body .rbd-need.eng .rbd-need-bar > span { background: linear-gradient(90deg, #5e35b1, #9575cd); }
+.rpg-pane-body .rbd-need.hyg .rbd-need-bar > span { background: linear-gradient(90deg, #26a69a, #80cbc4); }
+.rpg-pane-body .rbd-need.own .rbd-need-bar > span { background: linear-gradient(90deg, #ad1457, #f06292); }
+.rpg-pane-body .rbd-need.low .rbd-need-bar > span { background: linear-gradient(90deg, #c62828, #ff5f6d); }
+.rpg-pane-body .rbd-need-v { flex: 0 0 22px; text-align: right; font-size: .72rem; color: #8b93ad; }
+.rpg-pane-body .rbd-cycle { display: flex; align-items: center; gap: 9px; padding: 7px 10px; margin: 0 0 4px; border-radius: 8px; background: rgba(216, 27, 96, .07); border: 1px solid rgba(216, 27, 96, .22); }
+.rpg-pane-body .rbd-cycle.off { background: transparent; border-style: dashed; color: #7b849e; }
+.rpg-pane-body .rbd-cycle.preg { background: rgba(255, 196, 107, .08); border-color: rgba(255, 196, 107, .35); color: #ffe0a8; }
+.rpg-pane-body .rbd-cycle b { color: #ffd7e6; font-weight: 600; }
+.rpg-pane-body .rbd-cycle.ph-ovulation b { color: #ff9ec7; }
+.rpg-pane-body .rbd-cycle.ph-follicular b, .rpg-pane-body .rbd-cycle.ph-luteal b { color: #d9c2ff; }
+.rpg-pane-body .rbd-cyc-t { line-height: 1.3; color: #b6bfd6; }
+/* the ring: how far through her cycle she is */
+.rpg-pane-body .rbd-ring { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+    background: conic-gradient(#ff5f8f calc(var(--p) * 1%), rgba(255, 255, 255, .08) 0); position: relative; }
+.rpg-pane-body .rbd-ring::before { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: #1b1625; }
+.rpg-pane-body .rbd-ring i { position: relative; font-style: normal; font-size: .7rem; font-weight: 700; color: #ffd7e6; }
+.rpg-pane-body .rbd-sect { font-size: .66rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #7b849e; border-bottom: 1px solid rgba(255, 255, 255, .06); margin: 12px 0 7px; padding-bottom: 4px; }
+.rpg-pane-body .rbd-quiet { font-style: italic; color: #7b849e; font-size: .8rem; }
+.rpg-pane-body .rbd-ails { display: flex; flex-wrap: wrap; gap: 5px; }
+.rpg-pane-body .rbd-ail { display: inline-flex; align-items: center; gap: 5px; padding: 3px 4px 3px 9px; border-radius: 999px; font-size: .78rem; background: rgba(233, 69, 96, .1); border: 1px solid rgba(233, 69, 96, .3); color: #ffd0c9; }
+.rpg-pane-body .rbd-ail i { font-style: normal; font-size: .7rem; color: #c99; }
+.rpg-pane-body .rbd-x { font-weight: 400; font-size: .7rem; opacity: .55; cursor: pointer; padding: 0 5px; border-radius: 50%; }
+.rpg-pane-body .rbd-x:hover, .rpg-pane-body .rbd-x:focus-visible { opacity: 1; background: rgba(255, 255, 255, .1); outline: none; }
+.rpg-pane-body .rbd-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; }
+.rpg-pane-body .rbd-slot { min-height: 46px; padding: 5px 6px; border-radius: 8px; cursor: pointer; font: inherit; font-size: .76rem; line-height: 1.2; color: #7b849e;
+    background: rgba(0, 0, 0, .18); border: 1px dashed rgba(139, 92, 246, .3); display: grid; place-items: center; text-align: center; overflow: hidden; }
+.rpg-pane-body .rbd-slot.full { color: #e6dcff; border-style: solid; border-color: rgba(139, 92, 246, .5); background: linear-gradient(160deg, rgba(139, 92, 246, .16), rgba(0, 0, 0, .2)); }
+.rpg-pane-body .rbd-slot:hover, .rpg-pane-body .rbd-slot:focus-visible { border-color: rgba(233, 69, 96, .7); outline: none; }
+.rpg-pane-body .rbd-slot span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+.rpg-pane-body .rbd-pop { margin-top: 6px; padding: 6px; border-radius: 8px; background: rgba(20, 16, 30, .96); border: 1px solid rgba(139, 92, 246, .4); display: flex; flex-wrap: wrap; gap: 5px; }
+.rpg-pane-body .rbd-pop[hidden] { display: none; }
+.rpg-pane-body .rbd-pop-h { width: 100%; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: #7b849e; }
+.rpg-pane-body .rbd-pop-note { font-size: .8rem; color: #a8b2d1; font-style: italic; }
+.rpg-pane-body .rbd-pop-i { font: inherit; font-size: .78rem; padding: 4px 10px; border-radius: 999px; cursor: pointer; color: #ccd6f6; background: rgba(139, 92, 246, .12); border: 1px solid rgba(139, 92, 246, .35); }
+.rpg-pane-body .rbd-pop-i:hover { background: rgba(233, 69, 96, .2); border-color: rgba(233, 69, 96, .6); color: #fff; }
+.rpg-pane-body .rbd-more { margin-top: 12px; font-size: .78rem; color: #a8b2d1; }
+.rpg-pane-body .rbd-more > summary { cursor: pointer; color: #7b849e; }
+.rpg-pane-body .rbd-more[open] { display: grid; gap: 6px; }
+.rpg-pane-body .rbd-more label { display: flex; align-items: center; gap: 8px; }
+.rpg-pane-body .rbd-more select, .rpg-pane-body .rbd-more input[type="number"] { width: auto; max-width: 140px; padding: 2px 6px; font: inherit; color: #ccd6f6; background: rgba(0, 0, 0, .3); border: 1px solid rgba(139, 92, 246, .3); border-radius: 6px; }
+.rpg-pane-body .rbd-more input[type="number"] { width: 58px; }
+.rpg-pane-body .rbd-more i { font-style: normal; color: #7b849e; }
+.rpg-pane-body .rbd-reroll { justify-self: start; font: inherit; font-size: .76rem; padding: 3px 10px; border-radius: 6px; cursor: pointer; color: #a8b2d1; background: rgba(139, 92, 246, .1); border: 1px solid rgba(139, 92, 246, .3); }
+.rpg-pane-body .rbd-log { font-size: .74rem; color: #8b93ad; border-left: 2px solid rgba(139, 92, 246, .3); padding-left: 8px; }
+/* the relationship check's die shows the body's share */
+.tbe-body-mod { font-style: normal; font-size: .82em; opacity: .85; margin-left: 3px; }
+
+/* ============================================================
+   SETTINGS — frames with an emoji each, as RPG Map / Character Lens
+   ============================================================ */
+.rpg-status-settings .rpg-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 2px 0 6px; }
+.rpg-status-settings .rpg-top select { width: auto; margin: 0; }
+.rpg-status-settings .rpg-sub { margin: 8px 0; border: 1px solid var(--SmartThemeBorderColor, rgba(255, 255, 255, .15)); border-radius: 8px; padding: 8px 10px 10px; background: rgba(0, 0, 0, .12); }
+.rpg-status-settings .rpg-subhead { font-weight: 700; margin: 0 0 6px; opacity: .92; }
+.rpg-status-settings .rpg-sub > .text_pole[type="text"], .rpg-status-settings .rpg-sub > .text_pole[type="password"] { width: 100%; box-sizing: border-box; margin: 0 0 5px; }
+.rpg-status-settings .rpg-srow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 3px 0; }
+.rpg-status-settings .rpg-srow > label { flex: 1; min-width: 0; font-size: .9em; line-height: 1.25; opacity: .88; }
+.rpg-status-settings .rpg-srow > input[type="number"] { flex: 0 0 64px; width: 64px; margin: 0; text-align: center; }
+.rpg-status-settings .rpg-srow > select { flex: 0 1 auto; width: auto; max-width: 55%; margin: 0; }
+.rpg-status-settings .rpg-srow > input[type="range"] { flex: 1; }
+.rpg-status-settings .rpg-sub .checkbox_label { display: flex; align-items: flex-start; gap: 6px; margin: 4px 0; line-height: 1.3; }
+.rpg-status-settings .rpg-in { padding-left: 22px; }
+.rpg-status-settings .rpg-hint { opacity: .7; font-size: .82em; line-height: 1.3; margin: 2px 0 4px; }
+.rpg-status-settings .rpg-settings-tab { font-size: .78rem; padding: 7px 4px; }
+.rpg-status-settings .rpg-tool.world.rpg-suggest { box-shadow: 0 0 0 2px rgba(0, 172, 193, .35), 0 0 14px rgba(0, 172, 193, .25); }
+
+/* the stat editor's head: small buttons in neat rows, not slabs */
+.rpg-status-settings .rpg-tools { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.rpg-status-settings .rpg-tool {
+    flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 5px 8px; border-radius: 7px; cursor: pointer; font: inherit; font-size: .8rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: #d6dcf0; background: rgba(139, 92, 246, .12); border: 1px solid rgba(139, 92, 246, .38); transition: background .15s, border-color .15s, color .15s;
+}
+.rpg-status-settings .rpg-tool i { font-size: .9em; opacity: .85; }
+.rpg-status-settings .rpg-tool:hover, .rpg-status-settings .rpg-tool:focus-visible { background: rgba(139, 92, 246, .28); border-color: rgba(139, 92, 246, .8); color: #fff; outline: none; }
+.rpg-status-settings .rpg-tool.danger { color: #ffb0a6; background: rgba(255, 82, 82, .08); border-color: rgba(255, 82, 82, .35); flex: 0 1 auto; }
+.rpg-status-settings .rpg-tool.danger:hover { background: rgba(255, 82, 82, .2); border-color: rgba(255, 82, 82, .7); }
+.rpg-status-settings .rpg-tool.ai { background: rgba(139, 92, 246, .2); }
+.rpg-status-settings .rpg-tool.world { background: rgba(0, 172, 193, .12); border-color: rgba(0, 172, 193, .45); }
+.rpg-status-settings .rpg-tool.world:hover { background: rgba(0, 172, 193, .25); border-color: rgba(0, 172, 193, .8); }
+.rpg-status-settings .rpg-presets { gap: 6px; margin-bottom: 8px; }
+.rpg-status-settings .rpg-preset-btn { padding: 4px 6px; font-size: .76rem; min-width: 80px; }
+.rpg-status-settings #rpg-add-stat { padding: 5px 8px; font-size: .8rem; background: transparent; border-style: dashed; margin: 4px 0 0; }
+.rpg-status-settings #rpg-add-stat:hover { background: rgba(139, 92, 246, .15); }
+/* the two designers: side by side when there is room, one under the other when the panel is narrow */
+.rpg-status-settings .rpg-tools-ai .rpg-tool { flex: 1 1 150px; white-space: normal; text-align: center; }
+/* today's states: a hangover, a bad night, a rush, the crash */
+.rpg-pane-body .rbd-states { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 6px; }
+.rpg-pane-body .rbd-state { padding: 3px 9px; border-radius: 999px; font-size: .76rem; border: 1px solid rgba(255, 196, 107, .35); background: rgba(255, 196, 107, .08); color: #ffe0a8; }
+.rpg-pane-body .rbd-state.st-rush { border-color: rgba(255, 95, 109, .5); background: rgba(255, 95, 109, .12); color: #ffc1c8; }
+.rpg-pane-body .rbd-state.st-crash, .rpg-pane-body .rbd-state.st-sleepless { border-color: rgba(149, 117, 205, .45); background: rgba(149, 117, 205, .1); color: #d9c2ff; }
+
+/* ============================================
+   BIRTH AND CHILDREN — the clipping (the twist clipping's style), the pregnancy bar, the children
+   ============================================ */
+.rpg-pane-body .rbd-preg { flex-direction: column; align-items: stretch; gap: 5px; }
+.rpg-pane-body .rbd-preg-t b { color: #ffe0a8; }
+.rpg-pane-body .rbd-preg-bar { display: block; height: 5px; border-radius: 99px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+.rpg-pane-body .rbd-preg-bar > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f6b26b, #ff9ec7); transition: width .6s ease; }
+.rpg-pane-body .rbd-preg-s { font-size: .74rem; color: #c9b48a; }
+.rpg-pane-body .rbd-state.st-baby { border-color: rgba(129, 199, 255, .45); background: rgba(129, 199, 255, .1); color: #cfe8ff; }
+.rpg-pane-body .rbd-playing { margin: 10px 0 0; color: #ffe0a8; }
+
+/* paper */
+.rbd-paper {
+    background:
+        radial-gradient(120% 80% at 15% 10%, rgba(255, 250, 235, .55), transparent 60%),
+        radial-gradient(90% 70% at 90% 95%, rgba(150, 110, 60, .28), transparent 65%),
+        radial-gradient(60% 40% at 70% 20%, rgba(160, 120, 70, .12), transparent 70%),
+        repeating-linear-gradient(0deg, rgba(90, 70, 40, .035) 0 1px, transparent 1px 3px),
+        #ece0c2;
+}
+.rbd-torn { clip-path: polygon(0.0% 0.9%, 2.9% 0.4%, 5.9% 1.6%, 8.8% 0.2%, 11.8% 1.3%, 14.7% 0.9%, 17.6% 0.1%, 20.6% 1.2%, 23.5% 0.1%, 26.5% 1.0%, 29.4% 0.2%, 32.4% 0.2%, 35.3% 1.0%, 38.2% 2.0%, 41.2% 0.3%, 44.1% 0.5%, 47.1% 1.5%, 50.0% 2.3%, 52.9% 1.4%, 55.9% 1.0%, 58.8% 2.3%, 61.8% 0.1%, 64.7% 2.1%, 67.6% 0.7%, 70.6% 0.3%, 73.5% 0.3%, 76.5% 0.7%, 79.4% 2.0%, 82.4% 0.4%, 85.3% 1.4%, 88.2% 1.5%, 91.2% 0.9%, 94.1% 1.3%, 97.1% 0.2%, 100.0% 0.7%, 99.9% 12.5%, 99.6% 25.0%, 99.7% 37.5%, 99.8% 50.0%, 99.6% 62.5%, 99.7% 75.0%, 99.8% 87.5%, 100.0% 98.8%, 97.1% 98.2%, 94.1% 99.4%, 91.2% 98.5%, 88.2% 98.6%, 85.3% 97.7%, 82.4% 98.1%, 79.4% 99.3%, 76.5% 97.5%, 73.5% 99.7%, 70.6% 98.9%, 67.6% 98.0%, 64.7% 99.6%, 61.8% 98.7%, 58.8% 99.9%, 55.9% 98.3%, 52.9% 98.0%, 50.0% 98.5%, 47.1% 97.7%, 44.1% 99.2%, 41.2% 98.2%, 38.2% 98.5%, 35.3% 98.5%, 32.4% 98.8%, 29.4% 97.8%, 26.5% 97.5%, 23.5% 98.8%, 20.6% 98.3%, 17.6% 99.8%, 14.7% 98.2%, 11.8% 98.3%, 8.8% 97.4%, 5.9% 97.9%, 2.9% 99.3%, 0.0% 99.1%, 0.4% 87.5%, 0.0% 75.0%, 0.3% 62.5%, 0.1% 50.0%, 0.1% 37.5%, 0.0% 25.0%, 0.5% 12.5%); }
+.rbd-torn-strip { clip-path: polygon(0.0% 4.0%, 2.5% 4.5%, 5.0% 5.6%, 7.5% 9.2%, 10.0% 4.7%, 12.5% 5.1%, 15.0% 5.9%, 17.5% 1.8%, 20.0% 5.1%, 22.5% 6.3%, 25.0% 7.9%, 27.5% 0.9%, 30.0% 3.0%, 32.5% 0.9%, 35.0% 8.1%, 37.5% 6.9%, 40.0% 0.4%, 42.5% 9.8%, 45.0% 9.6%, 47.5% 6.5%, 50.0% 6.2%, 52.5% 1.6%, 55.0% 0.2%, 57.5% 5.3%, 60.0% 0.6%, 62.5% 1.9%, 65.0% 2.4%, 67.5% 0.3%, 70.0% 4.6%, 72.5% 4.4%, 75.0% 8.4%, 77.5% 5.2%, 80.0% 6.4%, 82.5% 5.0%, 85.0% 6.6%, 87.5% 4.6%, 90.0% 2.8%, 92.5% 10.0%, 95.0% 10.0%, 97.5% 8.4%, 100.0% 4.0%, 100.0% 96.0%, 97.5% 92.9%, 95.0% 96.8%, 92.5% 97.7%, 90.0% 97.1%, 87.5% 99.3%, 85.0% 92.3%, 82.5% 96.0%, 80.0% 91.5%, 77.5% 96.1%, 75.0% 90.4%, 72.5% 91.5%, 70.0% 100.0%, 67.5% 97.9%, 65.0% 90.9%, 62.5% 95.3%, 60.0% 90.2%, 57.5% 96.0%, 55.0% 99.3%, 52.5% 93.7%, 50.0% 92.2%, 47.5% 97.3%, 45.0% 99.1%, 42.5% 96.7%, 40.0% 90.4%, 37.5% 92.4%, 35.0% 98.8%, 32.5% 97.5%, 30.0% 99.0%, 27.5% 99.4%, 25.0% 92.0%, 22.5% 98.2%, 20.0% 94.4%, 17.5% 95.5%, 15.0% 98.1%, 12.5% 92.7%, 10.0% 98.7%, 7.5% 93.6%, 5.0% 98.8%, 2.5% 95.8%, 0.0% 96.0%); }
+
+/* the folded strip in the tab */
+.rpg-pane-body .rbd-strip { box-sizing: border-box; border: 0; border-radius: 0; font: inherit; text-align: left; display: flex; align-items: center; gap: 12px; width: 100%; margin: 12px 0 2px; padding: 11px 18px; cursor: pointer; color: #1f1710; box-shadow: 0 8px 18px rgba(0, 0, 0, .4); transform: rotate(-.6deg); transition: transform .2s; }
+.rpg-pane-body .rbd-strip:hover { transform: rotate(-.6deg) translateY(-1px); }
+.rpg-pane-body .rbd-strip:focus-visible { outline: 2px solid #e8c88a; outline-offset: 3px; }
+.rpg-pane-body .rbd-strip-stamp { flex: none; font: 700 11px/1.2 'Playfair Display SC', Georgia, serif; letter-spacing: .22em; color: #a3281e; border: 2px double #a3281e; border-radius: 4px; padding: 2px 7px; text-transform: uppercase; }
+.rpg-pane-body .rbd-strip-t { flex: 1; min-width: 0; font: 700 15px/1.25 'Playfair Display', Georgia, serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rpg-pane-body .rbd-strip-chev { color: #5a4632; transition: transform .2s; }
+.rpg-pane-body .rbd-strip:hover .rbd-strip-chev { transform: translateY(2px); }
+
+/* the clipping, over everything */
+/* a size of its own: on phones SillyTavern gives <html> a transform, and a fixed box then measures against <html>, not the screen */
+.rbd-birth-ov { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; z-index: 10050; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; overflow-y: auto; background: radial-gradient(120% 90% at 20% 0%, rgba(58, 42, 44, .82) 0%, rgba(34, 26, 29, .88) 55%, rgba(23, 18, 20, .92) 100%); animation: rbd-np-fade .35s ease-out both; }
+.rbd-np-wrap { position: relative; width: min(640px, 100%); margin: auto; --tilt: -1.5deg; font-family: 'Old Standard TT', Georgia, serif; color: #2a2118; }
+.rbd-np-shadow { position: absolute; left: 18px; right: 6px; top: 22px; bottom: -6px; background: rgba(0, 0, 0, .45); filter: blur(14px); border-radius: 6px; animation: rbd-np-shadow .95s ease-out both; }
+.rbd-np-drop { position: relative; transform-origin: 50% 0; animation: rbd-np-drop .95s cubic-bezier(.18, .9, .25, 1.05) both; }
+.rbd-np-tape { position: absolute; z-index: 3; top: -14px; left: 50%; width: 132px; height: 30px; margin-left: -66px; background: linear-gradient(180deg, rgba(236, 226, 196, .82), rgba(214, 200, 160, .74)); box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transform: rotate(-2.5deg); animation: rbd-np-fade .5s .7s ease-out both; }
+.rbd-np { position: relative; padding: 34px 40px 30px; box-shadow: inset 0 0 60px rgba(120, 90, 40, .22); }
+.rbd-np-x { all: unset; position: absolute; top: 14px; left: 18px; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; cursor: pointer; color: #5a4632; font-size: 14px; z-index: 2; }
+.rbd-np-x:hover { background: rgba(59, 45, 31, .1); }
+.rbd-np-x:focus-visible { outline: 2px solid #8a2c23; outline-offset: 2px; }
+.rbd-np-head { display: flex; flex-direction: column; align-items: center; gap: 6px; animation: rbd-np-in .8s .25s ease-out both; }
+.rbd-np-mast { display: flex; align-items: center; gap: 14px; width: 100%; }
+.rbd-np-mast > span:first-child, .rbd-np-mast > span:last-child { flex: 1; height: 1px; background: #3b2d1f; opacity: .55; }
+.rbd-np-title { font: 700 13px/1 'Playfair Display SC', Georgia, serif; letter-spacing: .32em; color: #3b2d1f; text-transform: uppercase; }
+.rbd-np-line { display: flex; justify-content: space-between; gap: 10px; width: 100%; font: 11px/1.3 'PT Mono', monospace; letter-spacing: .08em; color: #5a4632; border-top: 2px solid #3b2d1f; border-bottom: 1px solid #3b2d1f; padding: 5px 2px; }
+.rbd-np-line > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbd-np-line > span:nth-child(2) { text-align: center; }
+.rbd-np-h { margin: 30px 0 10px; font: 900 38px/1.06 'Playfair Display', Georgia, serif; color: #1f1710; text-align: center; text-wrap: balance; animation: rbd-np-ink 1.3s .35s ease-out both; }
+.rbd-np-lede { margin: 0 auto; max-width: 500px; font-style: italic; font-size: 17px; line-height: 1.5; text-align: center; color: #3a2c1e; animation: rbd-np-in .8s .7s ease-out both; }
+.rbd-np-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 22px; margin: 20px 0 4px; animation: rbd-np-in .8s .85s ease-out both; }
+.rbd-np-f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.rbd-np-f > span { font: 11px/1.3 'PT Mono', monospace; letter-spacing: .06em; color: #5a4632; text-transform: uppercase; }
+.rbd-np-f input, .rbd-np-f select { box-sizing: border-box; width: 100%; min-height: 38px; padding: 6px 4px; font: 16px/1.3 'Old Standard TT', Georgia, serif; color: #1f1710; background: transparent; border: 0; border-bottom: 1.5px solid rgba(59, 45, 31, .55); border-radius: 0; outline: none; }
+.rbd-np-f select option { color: #1f1710; background: #ece0c2; }
+.rbd-np-f input::placeholder { color: rgba(90, 70, 50, .55); font-style: italic; }
+.rbd-np-f input:focus, .rbd-np-f select:focus { border-bottom-color: #8a2c23; box-shadow: 0 1px 0 #8a2c23; }
+.rbd-np-div { display: flex; align-items: center; gap: 12px; margin: 22px 0 10px; animation: rbd-np-in .8s .9s ease-out both; }
+.rbd-np-div > span:first-child, .rbd-np-div > span:last-child { flex: 1; border-top: 1px solid rgba(59, 45, 31, .5); }
+.rbd-np-div > span:nth-child(2) { font: 700 13px/1 'Playfair Display SC', Georgia, serif; letter-spacing: .2em; color: #5a4632; text-transform: uppercase; }
+.rbd-np-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.rbd-np-opt { all: unset; box-sizing: border-box; display: flex; gap: 10px; padding: 8px 14px; cursor: pointer; border-left: 1px solid rgba(59, 45, 31, .35); border-radius: 2px; transition: background .2s; animation: rbd-np-in .8s 1.05s ease-out both; }
+.rbd-np-opt:first-child { border-left: 0; }
+.rbd-np-opt:nth-child(2) { animation-delay: 1.15s; }
+.rbd-np-opt:nth-child(3) { animation-delay: 1.25s; }
+.rbd-np-opt:hover { background: rgba(138, 44, 35, .07); }
+.rbd-np-opt:focus-visible { outline: 2px solid #8a2c23; outline-offset: 2px; }
+.rbd-np-n { flex: none; font: 15px/1.5 'PT Mono', monospace; color: #8a2c23; }
+.rbd-np-opt b { display: block; font: 700 17px/1.35 'Playfair Display', Georgia, serif; color: #1f1710; }
+.rbd-np-opt i { display: block; font-size: 14.5px; line-height: 1.4; color: #3a2c1e; }
+.rbd-np-foot { margin: 16px 0 0; font: 10.5px/1.3 'PT Mono', monospace; letter-spacing: .06em; color: #7a6650; text-align: right; animation: rbd-np-in .8s 1.4s ease-out both; }
+.rbd-np-stamp { position: absolute; right: 26px; top: 40px; padding: 6px 14px; border: 3px double #a3281e; border-radius: 6px; font: 700 19px/1.2 'Playfair Display SC', Georgia, serif; letter-spacing: .22em; text-transform: uppercase; color: #a3281e; mix-blend-mode: multiply; pointer-events: none; -webkit-mask-image: radial-gradient(circle at 30% 40%, #000 55%, rgba(0, 0, 0, .55) 75%, #000 90%); mask-image: radial-gradient(circle at 30% 40%, #000 55%, rgba(0, 0, 0, .55) 75%, #000 90%); animation: rbd-np-stamp .42s 1.25s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes rbd-np-drop { 0% { opacity: 0; transform: translateY(-46px) rotate(calc(var(--tilt) - 7deg)) scale(1.05); } 55% { opacity: 1; } 100% { opacity: 1; transform: translateY(0) rotate(var(--tilt)) scale(1); } }
+@keyframes rbd-np-shadow { 0% { opacity: 0; transform: translateY(-20px) scale(1.08); } 100% { opacity: 1; transform: none; } }
+@keyframes rbd-np-ink { 0% { opacity: 0; filter: blur(3px); letter-spacing: .06em; } 100% { opacity: 1; filter: blur(0); letter-spacing: -.01em; } }
+@keyframes rbd-np-in { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }
+@keyframes rbd-np-fade { 0% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes rbd-np-stamp { 0% { opacity: 0; transform: rotate(-14deg) scale(2.3); } 70% { opacity: .92; transform: rotate(-14deg) scale(.94); } 100% { opacity: .88; transform: rotate(-14deg) scale(1); } }
+.rbd-np-drop { transform: rotate(var(--tilt)); }
+@media (max-width: 560px) {
+    .rbd-np { padding: 30px 20px 24px; }
+    .rbd-np-h { font-size: 29px; }
+    .rbd-np-lede { font-size: 15.5px; }
+    .rbd-np-form { grid-template-columns: 1fr; }
+    .rbd-np-opts { grid-template-columns: 1fr; }
+    .rbd-np-opt { border-left: 0; border-top: 1px solid rgba(59, 45, 31, .3); }
+    .rbd-np-opt:first-child { border-top: 0; }
+    .rbd-np-stamp { top: 50px; right: 10px; font-size: 13px; padding: 3px 9px; }
+    .rbd-np-line > span:nth-child(3) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .rbd-birth-ov, .rbd-np-shadow, .rbd-np-drop, .rbd-np-tape, .rbd-np-head, .rbd-np-h, .rbd-np-lede, .rbd-np-form, .rbd-np-div, .rbd-np-opt, .rbd-np-foot, .rbd-np-stamp { animation: none; }
+    .rbd-np-stamp { opacity: .88; transform: rotate(-14deg); }
+}
+
+/* the children in the parent's tab */
+.rpg-pane-body .rbd-kids { display: grid; gap: 8px; }
+.rpg-pane-body .rbd-kid { padding: 9px 11px; border-radius: 10px; background: linear-gradient(160deg, rgba(129, 199, 255, .07), rgba(255, 158, 199, .05)); border: 1px solid rgba(129, 199, 255, .22); }
+.rpg-pane-body .rbd-kid-top { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.rpg-pane-body .rbd-kid-sex { font-size: 1.05rem; }
+.rpg-pane-body .rbd-kid-name { font-family: 'Alegreya', Georgia, serif; font-size: 1.02rem; font-weight: 700; color: #e6f1ff; }
+.rpg-pane-body .rbd-kid-name-in { width: 150px; min-height: 0; padding: 2px 6px; font: inherit; }
+.rpg-pane-body .rbd-kid-btn { all: unset; cursor: pointer; padding: 0 4px; border-radius: 4px; color: #7b849e; }
+.rpg-pane-body .rbd-kid-btn:hover, .rpg-pane-body .rbd-kid-btn:focus-visible { color: #ccd6f6; background: rgba(255, 255, 255, .06); }
+.rpg-pane-body .rbd-kid-age { margin-left: auto; font: .72rem/1.3 'PT Mono', monospace; color: #9fb6d6; }
+.rpg-pane-body .rbd-kid-par { margin: 2px 0 6px; font-size: .74rem; color: #7b849e; }
+.rpg-pane-body .rbd-kid-care { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: .76rem; color: #a8b2d1; }
+.rpg-pane-body .rbd-kid-care select, .rpg-pane-body .rbd-kid-care input { width: auto; max-width: 170px; min-height: 0; padding: 2px 6px; font: inherit; color: #ccd6f6; background: rgba(0, 0, 0, .3); border: 1px solid rgba(139, 92, 246, .3); border-radius: 6px; }
+.rpg-pane-body .rbd-kid-traits { display: flex; flex-wrap: wrap; gap: 5px; margin: 7px 0 0; }
+.rpg-pane-body .rbd-kid-tr { padding: 2px 8px; border-radius: 999px; font-size: .72rem; color: #ccd6f6; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .1); }
+.rpg-pane-body .rbd-kid-tr i { font-style: normal; opacity: .8; }
+.rpg-pane-body .rbd-kid-tr.from-m i { color: #ff9ec7; }
+.rpg-pane-body .rbd-kid-tr.from-f i { color: #81c7ff; }
+.rpg-pane-body .rbd-kid-tr.from-n i { color: #ffd166; }
+.rpg-pane-body .rbd-kid-desc { margin: 8px 0 0; font-family: 'Alegreya', Georgia, serif; font-size: .86rem; line-height: 1.5; color: #d7dff2; white-space: pre-wrap; }
+.rpg-pane-body .rbd-kid-desc.busy { font-style: italic; color: #7b849e; }
+.rpg-pane-body .rbd-kid-tools { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 0; }
+.rpg-pane-body .rbd-kid-tools .rpg-tool { all: unset; box-sizing: border-box; cursor: pointer; padding: 3px 9px; border-radius: 6px; font-size: .72rem; color: #c9b8ff; background: rgba(139, 92, 246, .1); border: 1px solid rgba(139, 92, 246, .35); transition: background .15s, border-color .15s; }
+.rpg-pane-body .rbd-kid-tools .rpg-tool:hover, .rpg-pane-body .rbd-kid-tools .rpg-tool:focus-visible { background: rgba(139, 92, 246, .26); border-color: rgba(139, 92, 246, .8); color: #fff; }
+.rpg-pane-body .rbd-kid-tools .rpg-tool[disabled] { opacity: .55; cursor: default; }
+.rpg-pane-body .rbd-kid-tools .rbd-kid-x { margin-left: auto; color: #ffb0a6; background: rgba(255, 82, 82, .06); border-color: rgba(255, 82, 82, .3); }
+
+
+/* the needs a character has — in their body settings */
+.rpg-pane-body .rbd-nds { margin: 4px 0; padding: 7px 9px 9px; border: 1px solid rgba(139, 92, 246, .22); border-radius: 8px; display: grid; gap: 6px; }
+.rpg-pane-body .rbd-nds legend { padding: 0 5px; font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #7b849e; }
+.rpg-pane-body .rbd-nd-row { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.rpg-pane-body .rbd-nd-chk { display: inline-flex !important; gap: 5px !important; }
+.rpg-pane-body .rbd-nd-own, .rpg-pane-body .rbd-nd-add { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rpg-pane-body .rbd-nd-own b { font-weight: 600; color: #ccd6f6; }
+.rpg-pane-body .rbd-nd-ic { width: 1.3em; text-align: center; }
+.rpg-pane-body .rbd-nds select, .rpg-pane-body .rbd-nds input[type="text"] { min-height: 0; padding: 2px 6px; font: inherit; color: #ccd6f6; background: rgba(0, 0, 0, .3); border: 1px solid rgba(139, 92, 246, .3); border-radius: 6px; }
+.rpg-pane-body .rbd-nd-icon { width: 3em; text-align: center; }
+.rpg-pane-body .rbd-nd-name { flex: 1 1 120px; min-width: 0; }
+.rpg-pane-body .rbd-nd-x, .rpg-pane-body .rbd-nd-plus { cursor: pointer; padding: 1px 8px; border-radius: 6px; font: inherit; color: #c9b8ff; background: rgba(139, 92, 246, .1); border: 1px solid rgba(139, 92, 246, .35); }
+.rpg-pane-body .rbd-nd-x { color: #ffb0a6; background: rgba(255, 82, 82, .06); border-color: rgba(255, 82, 82, .3); margin-left: auto; }
+.rpg-pane-body .rbd-nd-x:hover, .rpg-pane-body .rbd-nd-plus:hover, .rpg-pane-body .rbd-nd-x:focus-visible, .rpg-pane-body .rbd-nd-plus:focus-visible { background: rgba(139, 92, 246, .26); color: #fff; outline: none; }

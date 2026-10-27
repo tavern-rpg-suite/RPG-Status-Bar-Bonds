@@ -71,9 +71,22 @@ const I18N = {
         ui_profiles: "💾 Character profiles",
         ui_export_current: "Export current character",
         ui_import: "Import profile",
+        ui_export_short: "Export", ui_import_short: "Import", ui_reset_short: "Reset",
+        ui_export_all_title: "One file for this character: status, relationship and body (whatever is on)",
+        ui_import_all_title: "Load a character file onto the selected character",
+        ui_ai_short: "4 stats from the card", ui_ai_world_short: "4 stats for the world",
+        toast_imported_parts: "\"{char}\": imported {parts}.", part_status: "status", part_bonds: "relationship", part_body: "body",
         preset_fantasy: "⚔️ Fantasy",
         preset_survival: "🏕️ Survival",
         preset_romance: "💕 Romance",
+        preset_academy: "🏫 Academy",
+        preset_vampire: "🧛 Night & blood",
+        preset_isekai: "🌀 Isekai adventure",
+        ui_world_presets: "For RP cards (a world, not one person):",
+        ui_ai_world: "🌍 Generate 4 stats for an RP card (AI)",
+        ui_ai_world_hint: "This card looks like a world or a scenario: stats for the world fit it better.",
+        confirm_ai_world: "Let AI design 4 stats for the world of \"{char}\" (an RP card, not one person)? This replaces the current stats.",
+        sec_general: "General",
         confirm_preset: "Replace the current stats for {char} with this preset?",
         toast_exported: "Profile for \"{char}\" exported!",
         toast_imported: "Profile imported onto \"{char}\"!",
@@ -133,6 +146,24 @@ const I18N = {
                 { name: "Trust", desc: "Emotional trust toward {{user}}. Grows with kindness, drops with betrayal.", color: "green", value: 50, dynamicColor: true },
                 { name: "Attraction", desc: "Romantic/physical attraction toward {{user}}. Grows with chemistry and intimacy.", color: "pink", value: 30, dynamicColor: true },
                 { name: "Mood", desc: "Current mood. Rises with positive moments, falls with conflict.", color: "gold", value: 70, dynamicColor: true }
+            ],
+            academy: [
+                { name: "Standing", desc: "Reputation at the academy — grades, teachers' opinion, rank. Rises with success, falls with scandal and failure.", color: "gold", value: 60, dynamicColor: true },
+                { name: "Stress", desc: "Pressure of exams, rules and secrets. Rises with trouble and deadlines, falls with rest and friends.", color: "dark", value: 30, dynamicColor: false },
+                { name: "Energy", desc: "How much is left for the day. Drops with classes, training and late nights, restored by sleep.", color: "blue", value: 80, dynamicColor: true },
+                { name: "Popularity", desc: "How the other students see them. Rises with being noticed for good, falls with gossip.", color: "pink", value: 40, dynamicColor: true }
+            ],
+            vampire: [
+                { name: "Blood thirst", desc: "Hunger for blood. Grows every night without feeding and with wounds, falls after feeding.", color: "red", value: 30, dynamicColor: false },
+                { name: "Self-control", desc: "Holding the beast back. Falls with thirst, rage and the scent of blood, recovers with calm.", color: "purple", value: 70, dynamicColor: true },
+                { name: "Suspicion", desc: "How close the mortals are to the truth. Rises with slips and bodies, falls when the trail goes cold.", color: "dark", value: 20, dynamicColor: false },
+                { name: "Vitality", desc: "Physical strength. Drops with wounds and daylight, restored by blood and rest.", color: "cyan", value: 90, dynamicColor: true }
+            ],
+            isekai: [
+                { name: "Luck", desc: "How the world treats them today. Swings with absurd mishaps and lucky breaks.", color: "gold", value: 50, dynamicColor: true },
+                { name: "Debt", desc: "Money owed — to the guild, the tavern, the people they broke things of. Rises with damages, falls with paid quests.", color: "dark", value: 20, dynamicColor: false },
+                { name: "Party mood", desc: "How the party gets along. Rises with shared wins and meals, falls with quarrels and blame.", color: "pink", value: 60, dynamicColor: true },
+                { name: "Mana", desc: "Magic left. Spent on spells and skills, restored by rest.", color: "blue", value: 80, dynamicColor: true }
             ]
         }
     },
@@ -174,9 +205,22 @@ const I18N = {
         ui_profiles: "💾 Профили персонажей",
         ui_export_current: "Экспорт текущего персонажа",
         ui_import: "Импорт профиля",
+        ui_export_short: "Экспорт", ui_import_short: "Импорт", ui_reset_short: "Сброс",
+        ui_export_all_title: "Один файл на персонажа: статус, отношения и тело (что включено)",
+        ui_import_all_title: "Загрузить файл персонажа в выбранного персонажа",
+        ui_ai_short: "4 стата по карточке", ui_ai_world_short: "4 стата для мира",
+        toast_imported_parts: "«{char}»: загружено — {parts}.", part_status: "статус", part_bonds: "отношения", part_body: "тело",
         preset_fantasy: "⚔️ Фэнтези",
         preset_survival: "🏕️ Выживание",
         preset_romance: "💕 Романтика",
+        preset_academy: "🏫 Академия",
+        preset_vampire: "🧛 Ночь и кровь",
+        preset_isekai: "🌀 Исекай-приключение",
+        ui_world_presets: "Для РП-карточек (мир, а не один персонаж):",
+        ui_ai_world: "🌍 Сгенерировать 4 стата для РП-карточки (ИИ)",
+        ui_ai_world_hint: "Эта карточка похожа на мир или сценарий: статы для мира подойдут ей лучше.",
+        confirm_ai_world: "Пусть ИИ придумает 4 стата для мира «{char}» (РП-карточка, а не один персонаж)? Текущие статы будут заменены.",
+        sec_general: "Основное",
         confirm_preset: "Заменить текущие статы «{char}» этим пресетом?",
         toast_exported: "Профиль «{char}» экспортирован!",
         toast_imported: "Профиль импортирован в «{char}»!",
@@ -236,6 +280,24 @@ const I18N = {
                 { name: "Доверие", desc: "Эмоциональное доверие к {{user}}. Растёт от доброты, падает от предательства.", color: "green", value: 50, dynamicColor: true },
                 { name: "Влечение", desc: "Романтическое/физическое влечение к {{user}}. Растёт от химии и близости.", color: "pink", value: 30, dynamicColor: true },
                 { name: "Настроение", desc: "Текущее настроение. Растёт от приятных моментов, падает от конфликтов.", color: "gold", value: 70, dynamicColor: true }
+            ],
+            academy: [
+                { name: "Положение", desc: "Репутация в академии — оценки, мнение преподавателей, ранг. Растёт от успехов, падает от скандалов и провалов.", color: "gold", value: 60, dynamicColor: true },
+                { name: "Стресс", desc: "Давление экзаменов, правил и тайн. Растёт от неприятностей и сроков, падает от отдыха и друзей.", color: "dark", value: 30, dynamicColor: false },
+                { name: "Энергия", desc: "Сколько сил осталось на день. Падает от занятий, тренировок и ночей без сна, восстанавливается сном.", color: "blue", value: 80, dynamicColor: true },
+                { name: "Популярность", desc: "Как его видят другие студенты. Растёт, когда о нём говорят хорошее, падает от сплетен.", color: "pink", value: 40, dynamicColor: true }
+            ],
+            vampire: [
+                { name: "Жажда крови", desc: "Голод по крови. Растёт с каждой ночью без питья и от ран, падает после кормления.", color: "red", value: 30, dynamicColor: false },
+                { name: "Самоконтроль", desc: "Как крепко сдерживается зверь. Падает от жажды, ярости и запаха крови, восстанавливается в покое.", color: "purple", value: 70, dynamicColor: true },
+                { name: "Подозрение", desc: "Насколько смертные близки к правде. Растёт от промахов и тел, падает, когда след остывает.", color: "dark", value: 20, dynamicColor: false },
+                { name: "Живучесть", desc: "Физическая сила. Падает от ран и дневного света, восстанавливается кровью и отдыхом.", color: "cyan", value: 90, dynamicColor: true }
+            ],
+            isekai: [
+                { name: "Удача", desc: "Как мир обходится с ним сегодня. Скачет от нелепых неудач и счастливых случаев.", color: "gold", value: 50, dynamicColor: true },
+                { name: "Долги", desc: "Сколько он должен — гильдии, таверне, тем, у кого что-то сломал. Растут от ущерба, падают от оплаченных заданий.", color: "dark", value: 20, dynamicColor: false },
+                { name: "Настрой отряда", desc: "Как ладит отряд. Растёт от общих побед и трапез, падает от ссор и взаимных упрёков.", color: "pink", value: 60, dynamicColor: true },
+                { name: "Мана", desc: "Сколько магии осталось. Тратится на заклинания и навыки, восстанавливается отдыхом.", color: "blue", value: 80, dynamicColor: true }
             ]
         }
     }
@@ -461,7 +523,30 @@ function apiUrl() { return normalizeBase(apiConf().url) || 'https://openrouter.a
 function apiModel() { return apiConf().model || ''; }
 function borrowedFrom() { return apiConf().from; }
 
+/* The designer used to give up on the first stumble — a busy server, a slow answer, a model that
+   wrapped its JSON in a code fence or left a trailing comma — and the same press worked a moment
+   later. Now it tries once more by itself, and reads a slightly sloppy answer instead of failing. */
 async function callStatsAI(system, user) {
+    let last = null;
+    for (let i = 0; i < 2; i++) {
+        try { return await callStatsAIOnce(system, user); }
+        catch (e) {
+            last = e;
+            if (/HTTP 40[13]/.test(String(e && e.message))) break;   // a wrong key will not be right a second later
+            console.warn('[RPG Status Bar] stat design: trying once more —', e && e.message);
+            await new Promise(r => setTimeout(r, 1200));
+        }
+    }
+    throw last;
+}
+function looseJson(content) {
+    let x = String(content || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+    const m = x.match(/\{[\s\S]*\}/);
+    x = m ? m[0] : x;
+    try { return JSON.parse(x); } catch (e) { /* tidy and try again */ }
+    return JSON.parse(x.replace(/,\s*([}\]])/g, '$1').replace(/[“”]/g, '"'));
+}
+async function callStatsAIOnce(system, user) {
     const url = (apiUrl() || 'https://openrouter.ai/api/v1').replace(/\/$/, '') + '/chat/completions';
     const resp = await fetch(url, {
         method: 'POST',
@@ -480,12 +565,13 @@ async function callStatsAI(system, user) {
     }
     const data = await resp.json();
     if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) throw new Error("Unexpected AI response");
-    let content = (data.choices[0].message.content || '').trim();
-    const m = content.match(/\{[\s\S]*\}/);
-    return JSON.parse(m ? m[0] : content);
+    const content = (data.choices[0].message.content || '').trim();
+    const out = looseJson(content);
+    if (!out || !Array.isArray(out.stats) || !out.stats.length) throw new Error('no stats in the answer');
+    return out;
 }
 
-async function generateStatsForCharacter(charName) {
+async function generateStatsForCharacter(charName, opts = {}) {
     if (!apiKey()) { toastr.warning(t('toast_no_key')); return; }
     const card = getCharacterCard(charName);
     if (!card) { toastr.warning(t('toast_no_card', { char: escapeHtml(charName) })); return; }
@@ -493,7 +579,17 @@ async function generateStatsForCharacter(charName) {
     toastr.info(t('toast_gen_start'));
     try {
         const validColors = Object.keys(colorOptions());
-        const sys = `You are an RPG systems designer. Based on the character below, invent EXACTLY 4 status stats that best fit their nature, role and personality. Mix physical, emotional and relational stats where it makes sense.
+        const sys = opts.world
+            ? `You are an RPG systems designer. The card below is not one person but a roleplay WORLD or scenario — a setting with its own rules, dangers and cast. Invent EXACTLY 4 status stats that track what matters for a character living in this world: its dangers, needs, standing and pressures (for a vampire academy: Blood thirst, Suspicion, Standing, Self-control; for a fantasy guild comedy: Luck, Debt, Party mood, Mana). They must suit any character of this world, not one specific person.
+For each stat provide:
+- "name": short (1-2 words)
+- "desc": one sentence telling a Game Master what raises and lowers it in this world
+- "color": one of [${validColors.join(', ')}]
+- "value": a fitting starting value 0-100
+- "dynamicColor": true if higher is better (health-like), false otherwise
+${t('ai_names_lang')}
+Output ONLY valid JSON: { "stats": [ {"name":"","desc":"","color":"red","value":100,"dynamicColor":true} ] } with exactly 4 entries.`
+            : `You are an RPG systems designer. Based on the character below, invent EXACTLY 4 status stats that best fit their nature, role and personality. Mix physical, emotional and relational stats where it makes sense.
 For each stat provide:
 - "name": short (1-2 words)
 - "desc": one sentence telling a Game Master what raises and lowers it
@@ -503,7 +599,7 @@ For each stat provide:
 ${t('ai_names_lang')}
 Output ONLY valid JSON: { "stats": [ {"name":"","desc":"","color":"red","value":100,"dynamicColor":true} ] } with exactly 4 entries.`;
 
-        const result = await callStatsAI(sys, `Character:\n${card}`);
+        const result = await callStatsAI(sys, `${opts.world ? 'World / RP card' : 'Character'}:\n${card}`);
         let stats = Array.isArray(result?.stats) ? result.stats : [];
         stats = stats.slice(0, 4).map(s => {
             let v = Number(s.value);
@@ -590,6 +686,9 @@ function getActiveCharacters() {
 async function calculateNewStats(historyText, charName) {
     if (!apiKey()) throw new Error("API key is not set!");
     const profile = getProfile(charName);
+    // the Character tab's question rides along in this same request (nothing when it is off)
+    let bodyAsk = '';
+    try { bodyAsk = BODY.statusAsk(charName) || ''; } catch (e) { bodyAsk = ''; }
 
     let statsRules = "";
     let currentValuesJSON = {};
@@ -614,12 +713,13 @@ RULES:
 2. Also account for EMOTIONAL, SOCIAL and INTIMATE events (affection, trust, arousal, fear, tension) whenever such stats exist — move those stats accordingly.
 3. If nothing relevant happened, slightly decrease energy/satiety over time.
 4. Write a brief 1-sentence summary of ${charName}'s physical and emotional state. ${t('ai_summary_lang')}
-5. Output ONLY valid JSON. Keep the stat keys EXACTLY as given above.
+5. Output ONLY valid JSON. Keep the stat keys EXACTLY as given above.${bodyAsk}
 
 Format:
 {
   "stats": { "Stat1": 95, "Stat2": 80 },
-  "summary": "Short description."
+  "summary": "Short description."${bodyAsk ? `,
+  "body": { "ate": false, "drank": false, "slept": false, "new_ailments": [], "healed": [], "got_from_player": [], "gave_to_player": [] }` : ''}
 }`;
 
     let endpointUrl = (apiUrl() || 'https://openrouter.ai/api/v1').replace(/\/$/, '') + '/chat/completions';
@@ -660,9 +760,8 @@ Format:
             if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
                 throw new Error("Unexpected AI response");
             }
-            let content = (data.choices[0].message.content || '').trim();
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            return JSON.parse(jsonMatch ? jsonMatch[0] : content);
+            const content = (data.choices[0].message.content || '').trim();
+            return looseJson(content);   // a code fence or a trailing comma is not a failed update
         } catch (e) {
             if (i === 1) throw (e && e.name === 'AbortError') ? new Error('timeout') : e;
         } finally { clearTimeout(bell); }
@@ -829,7 +928,11 @@ async function processCharacterStatus(messageId, charName, forceUpdate = false) 
     try {
         const startIdx = Math.max(0, messageId - 10);
         const historySlice = chat.slice(startIdx, messageId + 1).filter(m => !m.is_system);
-        const historyText = historySlice.map(m => `${m.name}: ${m.mes}`).join('\n\n');
+        // the Character tab reads only what is new since the last update: the line marks where that starts
+        let bodyOn = false;
+        try { bodyOn = BODY.on(); } catch (e) { bodyOn = false; }
+        const newFrom = forceUpdate ? messageId : Math.max(startIdx, messageId - Math.max(1, settings.updateFrequency) + 1);
+        const historyText = historySlice.map(m => `${bodyOn && chat.indexOf(m) === newFrom ? '=== NEW ===\n' : ''}${m.name}: ${m.mes}`).join('\n\n');
 
         const result = await calculateNewStats(historyText, charName);
         if (getContext().chatId !== myChat) return;   // chat changed while the AI was thinking
@@ -848,6 +951,7 @@ async function processCharacterStatus(messageId, charName, forceUpdate = false) 
                 }
             });
         }
+        try { if (bodyOn && result && result.body) BODY.fromStatus(charName, result.body, messageId); } catch (e) { console.warn('[Character] status read failed', e); }
         const cleanSummary = aiName(result.summary, null, 400);   // junk ("-1") must not become the state line
         if (cleanSummary) profile.summary = cleanSummary;
         refreshLinkedStats(profile);           // stamp the snapshot with Vitals' current numbers
@@ -943,12 +1047,11 @@ function exportCurrentProfile() {
     const name = currentlyEditingChar || "Character";
     const profile = getProfile(name);
     const safe = String(name).replace(/[^a-zA-Z0-9а-яА-ЯёЁ_-]+/g, '_') || 'character';
-    downloadJson({
-        type: 'rpg_status_profile',
-        version: 1,
-        character: name,
-        profile: JSON.parse(JSON.stringify(profile))
-    }, `rpg_status_${safe}.json`);
+    // one file for the whole character: the status as before, and the relationship and the body when they are on
+    const out = { type: 'rpg_status_profile', version: 2, character: name, profile: JSON.parse(JSON.stringify(profile)) };
+    try { const b = TBE.exportNpc(name); if (b) out.bonds = b; } catch (e) { /* no Bonds page */ }
+    try { const b = BODY.exportChar(name); if (b) out.body = b; } catch (e) { /* the tab is off */ }
+    downloadJson(out, `rpg_character_${safe}.json`);
     toastr.success(t('toast_exported', { char: escapeHtml(name) }));
 }
 
@@ -971,7 +1074,11 @@ function importProfile() {
                     saveSettings();
                     renderDynamicStats();
                     updateContextInjection();
-                    toastr.success(t('toast_imported', { char: escapeHtml(target) }));
+                    // a version 2 file also carries the relationship and the body
+                    const parts = [t('part_status')];
+                    try { if (data.bonds && TBE.importNpc(target, data.bonds)) parts.push(t('part_bonds')); } catch (e) { console.warn('[RPG Suite] relationship import', e); }
+                    try { if (data.body && BODY.importChar(target, data.body)) parts.push(t('part_body')); } catch (e) { console.warn('[RPG Suite] body import', e); }
+                    toastr.success(parts.length > 1 ? t('toast_imported_parts', { char: escapeHtml(target), parts: parts.join(', ') }) : t('toast_imported', { char: escapeHtml(target) }));
                     return;
                 }
 
@@ -1004,59 +1111,28 @@ function importProfile() {
 // === SETTINGS UI ===
 function buildSettingsHtml() {
     // MERGED: no drawer of its own any more — this is the content of the "Status" tab.
+    // Open groups in frames, an emoji each, as RPG Map and Character Lens have them.
+    const sub = (title, body) => `<div class="rpg-sub"><div class="rpg-subhead">${title}</div>${body}</div>`;
     return `
-            <label class="checkbox_label">
-                <input type="checkbox" id="rpg-enabled">
-                ${t('ui_enable')}
-            </label>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10 margin-t-10">
-                <label>${t('ui_language')}:</label>
-                <select id="rpg-language" class="text_pole" style="width:auto;">
+            <div class="rpg-top">
+                <label class="checkbox_label"><input type="checkbox" id="rpg-enabled"> ${t('ui_enable')}</label>
+                <select id="rpg-language" class="text_pole" title="${escapeHtml(t('ui_language'))}" aria-label="${escapeHtml(t('ui_language'))}">
                     <option value="en">English</option>
                     <option value="ru">Русский</option>
                 </select>
             </div>
-            <hr class="sysHR">
-            <h4>${t('ui_api')}</h4>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10">
-                <input type="text" id="rpg-base-url" class="text_pole flex1" placeholder="${t('ui_url')}">
-            </div>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10">
-                <input type="password" id="rpg-api-key" class="text_pole flex1" placeholder="${t('ui_key')}">
-            </div>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10">
-                <input type="text" id="rpg-model" class="text_pole flex1" placeholder="${t('ui_model')}">
-            </div>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10">
-                <label style="min-width: 120px;">${t('ui_temp')}</label>
-                <input type="range" id="rpg-temperature" min="0" max="2" step="0.1" style="flex: 1;">
-                <span id="rpg-temp-val" style="min-width: 30px; text-align: right;"></span>
-            </div>
-            <hr class="sysHR">
-            <h4>${t('ui_gen')}</h4>
-            <label class="checkbox_label" title="${t('ui_inject_title')}">
-                <input type="checkbox" id="rpg-inject-context">
-                <b>${t('ui_inject')}</b>
-            </label>
-            <label class="checkbox_label margin-t-10" title="${t('ui_influence_title')}">
-                <input type="checkbox" id="rpg-influence">
-                <b>${t('ui_influence')}</b>
-            </label>
-            <label class="checkbox_label margin-t-10" title="${t('ui_per_chat_title')}">
-                <input type="checkbox" id="rpg-per-chat">
-                <b>${t('ui_per_chat')}</b>
-            </label>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10 margin-t-10">
-                <label>${t('ui_update_every')}</label>
-                <input type="number" id="rpg-freq" class="text_pole" min="1" max="15" style="width: 50px;">
-                <label>${t('ui_messages')}</label>
-            </div>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10" title="${t('ui_inject_depth_title')}">
-                <label>${t('ui_inject_depth')}</label>
-                <input type="number" id="rpg-inject-depth" class="text_pole" min="0" max="100" style="width: 50px;">
-            </div>
-            <hr class="sysHR">
-            <div id="rpg-dynamic-stats-container"></div>
+            ${sub(t('ui_api'), `
+                <input type="text" id="rpg-base-url" class="text_pole" placeholder="${t('ui_url')}" aria-label="${escapeHtml(t('ui_url'))}">
+                <input type="password" id="rpg-api-key" class="text_pole" placeholder="${t('ui_key')}" aria-label="${escapeHtml(t('ui_key'))}">
+                <input type="text" id="rpg-model" class="text_pole" placeholder="${t('ui_model')}" aria-label="${escapeHtml(t('ui_model'))}">
+                <div class="rpg-srow"><label for="rpg-temperature">${t('ui_temp').replace(/:\s*$/, '')}</label><input type="range" id="rpg-temperature" min="0" max="2" step="0.1"><span id="rpg-temp-val" style="min-width: 30px; text-align: right;"></span></div>`)}
+            ${sub(t('ui_gen'), `
+                <label class="checkbox_label" title="${t('ui_inject_title')}"><input type="checkbox" id="rpg-inject-context"> <span>${t('ui_inject')}</span></label>
+                <label class="checkbox_label" title="${t('ui_influence_title')}"><input type="checkbox" id="rpg-influence"> <span>${t('ui_influence')}</span></label>
+                <label class="checkbox_label" title="${t('ui_per_chat_title')}"><input type="checkbox" id="rpg-per-chat"> <span>${t('ui_per_chat')}</span></label>
+                <div class="rpg-srow"><label for="rpg-freq">${t('ui_update_every').replace(/:\s*$/, '')}, ${t('ui_messages')}</label><input type="number" id="rpg-freq" class="text_pole" min="1" max="15"></div>
+                <div class="rpg-srow" title="${t('ui_inject_depth_title')}"><label for="rpg-inject-depth">${t('ui_inject_depth').replace(/:\s*$/, '')}</label><input type="number" id="rpg-inject-depth" class="text_pole" min="0" max="100"></div>`)}
+            ${sub(t('ui_stat_config'), `<div id="rpg-dynamic-stats-container"></div>`)}
 `;
 }
 
@@ -1067,8 +1143,7 @@ function renderDynamicStats() {
         currentlyEditingChar = activeChars[0];
     }
 
-    let html = `<h4>${t('ui_stat_config')}</h4>`;
-    html += `<div class="flex-container alignitemscenter flexgap5 margin-b-10">
+    let html = `<div class="flex-container alignitemscenter flexgap5 margin-b-10">
         <label>${t('ui_edit_for')}</label>
         <select id="rpg-char-select" class="text_pole flex1">`;
     activeChars.forEach(name => {
@@ -1076,19 +1151,31 @@ function renderDynamicStats() {
     });
     html += `</select></div>`;
 
-    // per-character profile export / import
-    html += `<div class="flex-container flexgap5 margin-b-10">
-        <div class="rpg-add-stat-btn flex1" id="rpg-export-profile" style="margin-bottom:0;"><i class="fa-solid fa-file-export"></i> ${t('ui_export_current')}</div>
-        <div class="rpg-add-stat-btn flex1" id="rpg-import-profile" style="margin-bottom:0; background:rgba(105,240,174,0.15); border-color:#69f0ae;"><i class="fa-solid fa-file-import"></i> ${t('ui_import')}</div>
+    // the character's file (status, relationship, body) and a reset: one row of small buttons
+    html += `<div class="rpg-tools">
+        <button type="button" class="rpg-tool" id="rpg-export-profile" title="${escapeHtml(t('ui_export_all_title'))}"><i class="fa-solid fa-file-export"></i> ${t('ui_export_short')}</button>
+        <button type="button" class="rpg-tool" id="rpg-import-profile" title="${escapeHtml(t('ui_import_all_title'))}"><i class="fa-solid fa-file-import"></i> ${t('ui_import_short')}</button>
+        <button type="button" class="rpg-tool danger" id="rpg-reset-char" title="${escapeHtml(t('ui_reset'))}"><i class="fa-solid fa-rotate-left"></i> ${t('ui_reset_short')}</button>
     </div>`;
-    html += `<div class="rpg-add-stat-btn margin-b-10" id="rpg-reset-char" style="background:rgba(255,82,82,0.12); border-color:rgba(255,82,82,0.5);"><i class="fa-solid fa-rotate-left"></i> ${t('ui_reset')}</div>`;
 
-    html += `<div class="rpg-add-stat-btn margin-b-10" id="rpg-ai-generate" style="background:rgba(139,92,246,0.25); border-color:rgba(139,92,246,0.7);"><i class="fa-solid fa-wand-magic-sparkles"></i> ${t('ui_ai_generate')}</div>`;
-
+    // the two designers side by side; an RP card (a world, not one person) gets the world one lit up
+    let worldCard = false;
+    try { worldCard = BODY.isWorldName(currentlyEditingChar); } catch (e) { worldCard = false; }
+    html += `<div class="rpg-tools rpg-tools-ai">
+        <button type="button" class="rpg-tool ai" id="rpg-ai-generate" title="${escapeHtml(t('ui_ai_generate'))}">✨ ${t('ui_ai_short')}</button>
+        <button type="button" class="rpg-tool world${worldCard ? ' rpg-suggest' : ''}" id="rpg-ai-generate-world" title="${escapeHtml(t('ui_ai_world'))}">🌍 ${t('ui_ai_world_short')}</button>
+    </div>`;
+    if (worldCard) html += `<div class="rpg-hint">${t('ui_ai_world_hint')}</div>`;
     html += `<div class="rpg-presets">
         <div class="rpg-preset-btn" data-preset="fantasy">${t('preset_fantasy')}</div>
         <div class="rpg-preset-btn" data-preset="survival">${t('preset_survival')}</div>
         <div class="rpg-preset-btn" data-preset="romance">${t('preset_romance')}</div>
+    </div>
+    <div class="rpg-hint">${t('ui_world_presets')}</div>
+    <div class="rpg-presets">
+        <div class="rpg-preset-btn" data-preset="academy">${t('preset_academy')}</div>
+        <div class="rpg-preset-btn" data-preset="vampire">${t('preset_vampire')}</div>
+        <div class="rpg-preset-btn" data-preset="isekai">${t('preset_isekai')}</div>
     </div>`;
     html += `<div id="rpg-stats-setup-list">`;
 
@@ -1136,6 +1223,9 @@ function renderDynamicStats() {
     });
     $('#rpg-ai-generate').on('click', () => {
         if (confirm(t('confirm_ai_generate', { char: currentlyEditingChar }))) generateStatsForCharacter(currentlyEditingChar);
+    });
+    $('#rpg-ai-generate-world').on('click', () => {
+        if (confirm(t('confirm_ai_world', { char: currentlyEditingChar }))) generateStatsForCharacter(currentlyEditingChar, { world: true });
     });
 
     $('#rpg-add-stat').on('click', () => {
@@ -1285,7 +1375,20 @@ const SB_API = {
     loadSettings, pruneOldStates, mountSettings,
     updateContextInjection, observeChat, restoreStatusesOnLoad,
     scheduleReconcile, refreshCastIfChanged, processCharacterStatus, renderInlineStatus,
-    resetCast: () => { lastCastKey = ''; }
+    resetCast: () => { lastCastKey = ''; },
+    // plain text through the Status Bar's own connection (the Character tab's newborn note uses it)
+    hasKey: () => !!apiKey(),
+    aiText: async (system, user, maxTokens = 400) => {
+        if (!apiKey()) throw new Error('no-key');
+        const resp = await fetch(apiUrl().replace(/\/$/, '') + '/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${apiKey().trim()}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: apiModel(), messages: [{ role: 'system', content: system }, { role: 'user', content: user }], temperature: 0.8, max_tokens: maxTokens })
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        return String(data?.choices?.[0]?.message?.content || '').trim();
+    }
 };
 return SB_API;
 })();
@@ -1419,6 +1522,7 @@ const I18N = {
         title_bonds: 'The Album',
         set_title: 'Bonds Engine (relationships)',
         set_enable: 'Enable module', set_lang: 'Language:',
+        sec_conn: 'Connection', sec_checks: 'Checks and dice', sec_init: 'Initiative', sec_court: 'Courtship', sec_prose: 'Prose', sec_roster: 'Who is on the page', sec_prompt: 'Main model', sec_gm: 'Game master',
         set_url: 'URL', set_key: 'API Key', set_model: 'Model',
         set_depth: 'Profile injection depth:',
         set_autoprofile: 'Build traits from the character card automatically',
@@ -1559,6 +1663,7 @@ const I18N = {
         title_bonds: 'Альбом',
         set_title: 'Bonds Engine (отношения)',
         set_enable: 'Включить модуль', set_lang: 'Язык:',
+        sec_conn: 'Подключение', sec_checks: 'Проверки и кубики', sec_init: 'Инициатива', sec_court: 'Ухаживание', sec_prose: 'Проза', sec_roster: 'Кто в альбоме', sec_prompt: 'Основная модель', sec_gm: 'Мастер игры',
         set_url: 'URL', set_key: 'API-ключ', set_model: 'Модель',
         set_depth: 'Глубина вставки профиля:',
         set_autoprofile: 'Собирать характер из карточки персонажа автоматически',
@@ -2557,8 +2662,12 @@ function applyDelta(npc, delta, scale) {
 const RES_SCALE = { crit_success: 1.5, strong_success: 1.2, success: 1, fail: 1, hard_fail: 1.5, crit_fail: 2 };
 
 function resolveCheck(npc, act, ctx) {
-    const dc = computeDC(npc, act, ctx);
+    let dc = computeDC(npc, act, ctx);
     if (dc == null) return null;
+    // her body today (the Character tab): cramps, a cold, hunger make it harder; a good day easier
+    let bodyMod = 0;
+    try { bodyMod = BODY.dcMod(npc.name) || 0; } catch (e) { bodyMod = 0; }
+    if (bodyMod) dc = clamp(dc + bodyMod, 3, 28);
     const trustBefore = npc.disp.trust;
     const roll = d20();                       // DC was frozen a line ago; this is the only randomness
     const res = classifyResult(roll, dc);
@@ -2586,6 +2695,8 @@ function resolveCheck(npc, act, ctx) {
         if (res === 'strong_success' || res === 'crit_success') applyDelta(npc, { respect: 1 });
         npc.failStreak = 0; npc.grace = 0;
         if (A.kind === 'intimacy') npc.maxTier = Math.max(npc.maxTier, A.tier || 0);
+        // a night together is told once to whoever keeps her cycle (the Character tab)
+        if (act === 'sex') { try { window.dispatchEvent(new CustomEvent('rpg:intimacy', { detail: { level: 'sex', with: npc.name, chatId: currentChatId, at: Date.now(), source: 'bonds' } })); } catch (e) { /* nobody listening */ } }
         if (A.milestone) {
             npc.milestones[A.milestone] = true;
             pushEvent(npc, t('ev_' + A.milestone));
@@ -2607,14 +2718,14 @@ function resolveCheck(npc, act, ctx) {
     if (res === 'crit_fail') pushMemory(npc, 'bad', t('mem_bad', { act: t('act_' + act) }));
 
     npc.lastAct = act; npc.lastActTurn = state.turn;
-    npc.log.push({ turn: state.turn, act, dc, roll, res });
+    npc.log.push(Object.assign({ turn: state.turn, act, dc, roll, res }, bodyMod ? { body: bodyMod } : {}));
     npc.log = npc.log.slice(-12);
 
     const walked = (!won && npc.failStreak >= 3);
     if (walked) { npc.cooldown = 2; npc.grace = 3; npc.failStreak = 0; npc.mendUntil = state.turn + 8; }
 
     checkStage(npc);
-    return { act, dc, roll, res, won, walked };
+    return { act, dc, roll, res, won, walked, body: bodyMod };
 }
 
 // Ordinary conversation — a turn where nothing was attempted — still counts for
@@ -3247,6 +3358,7 @@ async function readCharProse(msgId) {
     if (keys.length > 40) for (const k of keys.sort((a, b) => a - b).slice(0, keys.length - 40)) delete led[k];
 
     dbg('prose read', { name: npc.name, act: actRaw, credited: act, warm: warmRaw, intensity, delta });
+    if (act === 'sex') { try { window.dispatchEvent(new CustomEvent('rpg:intimacy', { detail: { level: 'sex', with: npc.name, messageId: msgId, chatId: currentChatId, at: Date.now(), source: 'bonds' } })); } catch (e) { /* nobody listening */ } }
     // No checkStage() here on purpose. A stage is a thing the story decides; letting
     // prose promote a relationship would mean the model narrating its own promotion.
     saveState(true); updateInjections(); renderAlbum();
@@ -3714,7 +3826,7 @@ function checkCard(e) {
         <span class="tbe-die${nat}"><b>${e.roll}</b></span>
         <span class="tbe-check-info">
             <span class="tbe-check-act">${escapeHtml(t('act_' + e.act))}</span>
-            <span class="tbe-check-dc">${escapeHtml(t('p_vs'))} ${e.dc}</span>
+            <span class="tbe-check-dc">${escapeHtml(t('p_vs'))} ${e.dc}${e.body ? ` <i class="tbe-body-mod" title="${escapeHtml(BODY.t('dice_title'))}">🎲${e.body > 0 ? '+' : ''}${e.body}</i>` : ''}</span>
             <span class="tbe-check-res">${escapeHtml(t('res_' + e.res))}</span>
         </span>
     </div>`;
@@ -4167,83 +4279,67 @@ function renderMainUI() {
 // opening a drawer of their own.
 // ============================================================
 function settingsHtml() {
+    // open groups in frames, an emoji each, as RPG Map and Character Lens have them
+    const sub = (title, body) => `<div class="rpg-sub"><div class="rpg-subhead">${title}</div>${body}</div>`;
+    const chk = (id, key) => `<label class="checkbox_label"><input type="checkbox" id="${id}"> <span>${t(key)}</span></label>`;
+    const num = (id, key, attrs, unit = '') => `<div class="rpg-srow"><label for="${id}">${t(key).replace(/:\s*$/, '')}${unit ? `, ${unit}` : ''}</label><input type="number" id="${id}" class="text_pole" ${attrs}></div>`;
+    const hint = key => `<div class="rpg-hint">${t(key)}</div>`;
     return `
-            <label class="checkbox_label"><input type="checkbox" id="tbe-enabled"> ${t('set_enable')}</label>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10" style="margin-top:8px;">
-                <label>${t('set_lang')}</label>
-                <select id="tbe-lang" class="text_pole" style="width:auto;">
+            <div class="rpg-top">
+                ${chk('tbe-enabled', 'set_enable')}
+                <select id="tbe-lang" class="text_pole" title="${escapeHtml(t('set_lang'))}" aria-label="${escapeHtml(t('set_lang'))}">
                     <option value="en">English</option>
                     <option value="ru">Русский</option>
                 </select>
             </div>
-            <hr class="sysHR">
-            <input type="text" id="tbe-base" class="text_pole margin-b-10" placeholder="${t('set_url')}" style="width:100%;">
-            <input type="password" id="tbe-key" class="text_pole margin-b-10" placeholder="${t('set_key')}" style="width:100%;">
-            <input type="text" id="tbe-model" class="text_pole margin-b-10" placeholder="${t('set_model')}" style="width:100%;">
-            <div class="tbe-hint">${t('hint_keys')}</div>
-            <div id="tbe-borrow" class="tbe-note" style="display:none;"><i class="fa-solid fa-link"></i> <span></span></div>
-            <div id="tbe-nokey-warn" class="tbe-warn" style="display:none;"><i class="fa-solid fa-triangle-exclamation"></i> ${t('warn_nokey')}</div>
-            <hr class="sysHR">
-            <label class="checkbox_label"><input type="checkbox" id="tbe-classify"> ${t('set_classify')}</label>
-            <label class="checkbox_label"><input type="checkbox" id="tbe-autoprofile"> ${t('set_autoprofile')}</label>
-            <label class="checkbox_label"><input type="checkbox" id="tbe-prose"> ${t('set_prose')}</label>
-            <label class="checkbox_label"><input type="checkbox" id="tbe-intimacy"> ${t('set_intimacy')}</label>
-            <label class="checkbox_label"><input type="checkbox" id="tbe-initiative"> ${t('set_initiative')}</label>
-            <label class="checkbox_label"><input type="checkbox" id="tbe-demotion"> ${t('set_demotion')}</label>
-            <label class="checkbox_label"><input type="checkbox" id="tbe-autoroster"> ${t('set_autoroster')}</label>
-            <div class="tbe-hint">${t('hint_autoroster')}</div>
-            <label class="checkbox_label"><input type="checkbox" id="tbe-solo"> ${t('set_solo')}</label>
-            <div class="tbe-hint">${t('hint_solo')}</div>
-            <label class="checkbox_label"><input type="checkbox" id="tbe-courtship"> ${t('set_courtship')}</label>
-            <div class="tbe-hint">${t('hint_courtship')}</div>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10">
-                <label>${t('set_courtrate')}</label>
-                <input type="number" id="tbe-courtrate" class="text_pole" min="100" max="400" style="width:60px;"> %
-            </div>
-            <label class="checkbox_label"><input type="checkbox" id="tbe-charprose"> ${t('set_charprose')}</label>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10">
-                <label>${t('set_charprosew')}</label>
-                <input type="number" id="tbe-charprosew" class="text_pole" min="0" max="100" style="width:60px;"> %
-            </div>
-            <div class="tbe-hint">${t('hint_charprose')}</div>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10" style="margin-top:8px;">
-                <label>${t('set_initrate')}</label>
-                <input type="number" id="tbe-initrate" class="text_pole" min="0" max="300" style="width:60px;"> %
-            </div>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10">
-                <label>${t('set_initf')}</label>
-                <input type="number" id="tbe-initf" class="text_pole" min="0" max="200" style="width:60px;"> %
-                <label>${t('set_initm')}</label>
-                <input type="number" id="tbe-initm" class="text_pole" min="0" max="200" style="width:60px;"> %
-            </div>
-            <div class="tbe-hint">${t('hint_initgender')}</div>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10">
-                <label>${t('set_pace')}</label>
-                <input type="number" id="tbe-pace" class="text_pole" min="25" max="400" style="width:60px;"> %
-            </div>
-            <div class="tbe-hint">${t('hint_pace')}</div>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10">
-                <label>${t('set_difficulty')}</label>
-                <input type="number" id="tbe-difficulty" class="text_pole" min="25" max="300" style="width:60px;"> %
-            </div>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10">
-                <label>${t('set_defgender')}</label>
-                <select id="tbe-defgender" class="text_pole" style="width:auto;">
-                    <option value="f">${t('g_f')}</option>
-                    <option value="m">${t('g_m')}</option>
-                </select>
-            </div>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10">
-                <label>${t('set_events')}</label>
-                <input type="number" id="tbe-events" class="text_pole" min="0" max="10" style="width:50px;">
-            </div>
-            <div class="flex-container alignitemscenter flexgap5 margin-b-10">
-                <label>${t('set_depth')}</label>
-                <input type="number" id="tbe-depth" class="text_pole" min="0" max="12" style="width:50px;">
-            </div>
-            <hr class="sysHR">
-            <label class="checkbox_label"><input type="checkbox" id="tbe-gm"> ${t('set_gm')}</label>
-            <label class="checkbox_label"><input type="checkbox" id="tbe-debug"> ${t('set_debug')}</label>
+            ${sub(`🔌 ${t('sec_conn')}`, `
+                <input type="text" id="tbe-base" class="text_pole" placeholder="${t('set_url')}" aria-label="${escapeHtml(t('set_url'))}">
+                <input type="password" id="tbe-key" class="text_pole" placeholder="${t('set_key')}" aria-label="${escapeHtml(t('set_key'))}">
+                <input type="text" id="tbe-model" class="text_pole" placeholder="${t('set_model')}" aria-label="${escapeHtml(t('set_model'))}">
+                <div class="tbe-hint">${t('hint_keys')}</div>
+                <div id="tbe-borrow" class="tbe-note" style="display:none;"><i class="fa-solid fa-link"></i> <span></span></div>
+                <div id="tbe-nokey-warn" class="tbe-warn" style="display:none;"><i class="fa-solid fa-triangle-exclamation"></i> ${t('warn_nokey')}</div>`)}
+            ${sub(`🎲 ${t('sec_checks')}`, `
+                ${chk('tbe-classify', 'set_classify')}
+                ${chk('tbe-autoprofile', 'set_autoprofile')}
+                ${chk('tbe-intimacy', 'set_intimacy')}
+                ${chk('tbe-demotion', 'set_demotion')}
+                ${num('tbe-difficulty', 'set_difficulty', 'min="25" max="300"', '%')}
+                ${num('tbe-pace', 'set_pace', 'min="25" max="400"', '%')}
+                ${hint('hint_pace')}
+                <div class="rpg-srow"><label for="tbe-defgender">${t('set_defgender')}</label>
+                    <select id="tbe-defgender" class="text_pole">
+                        <option value="f">${t('g_f')}</option>
+                        <option value="m">${t('g_m')}</option>
+                    </select></div>`)}
+            ${sub(`💌 ${t('sec_init')}`, `
+                ${chk('tbe-initiative', 'set_initiative')}
+                <div class="rpg-in">
+                    ${num('tbe-initrate', 'set_initrate', 'min="0" max="300"', '%')}
+                    ${num('tbe-initf', 'set_initf', 'min="0" max="200"', '%')}
+                    ${num('tbe-initm', 'set_initm', 'min="0" max="200"', '%')}
+                    ${hint('hint_initgender')}
+                </div>`)}
+            ${sub(`🌹 ${t('sec_court')}`, `
+                ${chk('tbe-courtship', 'set_courtship')}
+                ${hint('hint_courtship')}
+                <div class="rpg-in">${num('tbe-courtrate', 'set_courtrate', 'min="100" max="400"', '%')}</div>`)}
+            ${sub(`✍️ ${t('sec_prose')}`, `
+                ${chk('tbe-prose', 'set_prose')}
+                ${chk('tbe-charprose', 'set_charprose')}
+                <div class="rpg-in">${num('tbe-charprosew', 'set_charprosew', 'min="0" max="100"', '%')}</div>
+                ${hint('hint_charprose')}`)}
+            ${sub(`👥 ${t('sec_roster')}`, `
+                ${chk('tbe-autoroster', 'set_autoroster')}
+                ${hint('hint_autoroster')}
+                ${chk('tbe-solo', 'set_solo')}
+                ${hint('hint_solo')}`)}
+            ${sub(`🪄 ${t('sec_prompt')}`, `
+                ${num('tbe-events', 'set_events', 'min="0" max="10"')}
+                ${num('tbe-depth', 'set_depth', 'min="0" max="12"')}`)}
+            ${sub(`🛠️ ${t('sec_gm')}`, `
+                ${chk('tbe-gm', 'set_gm')}
+                ${chk('tbe-debug', 'set_debug')}`)}
 `;
 }
 
@@ -4387,10 +4483,1519 @@ const TBE_API = {
     freshState: () => { state = freshState(); },
     releaseChat: (chatIdArg) => { stateReady = false; currentChatId = null; pendingChatId = chatIdArg || null; state = freshState(); },
     pendingChatId: () => pendingChatId,
-    onPlayerMessage, onCharacterReply
+    onPlayerMessage, onCharacterReply, guessGender,
+    // the eight traits and their words (the Character tab's children inherit them)
+    traitKeys: () => TRAITS.slice(),
+    traitWords: (traits, gender, limit = 3) => { try { return traitPhrases({ traits, gender }, limit); } catch (e) { return []; } },
+    // one relationship page in and out of a character file (the Status Bar's export carries it)
+    exportNpc: (name) => { const n = state && state.npcs ? state.npcs[nameKey(name)] : null; return n ? clone(n) : null; },
+    importNpc: (name, data) => {
+        if (!state || !data || typeof data !== 'object') return false;
+        const n = sanitizeNpc(Object.assign(clone(data), { name: String(name), key: nameKey(name) }));
+        if (!n) return false;
+        state.npcs[n.key] = n;
+        if (state.dismissed) delete state.dismissed[n.key];
+        if (!state.active) state.active = n.key;
+        saveState(true); updateInjections(); renderAlbum();
+        if (window.RPGSB_BONDS_REFRESH) window.RPGSB_BONDS_REFRESH();
+        return true;
+    }
 };
 return TBE_API;
 })();
+
+/* ============================================================
+   ENGINE 3 — THE CHARACTER  (the third tab: body, cycle, ailments, pockets)
+   ------------------------------------------------------------
+   Everything here is counted by code, on the story's own clock: the Scene Card's date
+   and time when it is there, the number of replies when it is not. The model is never
+   called for it. What happened in the story (a meal, a night's sleep, a cold, a thing
+   handed over) is read by the Status Bar's own update, inside the request it already
+   makes. The main model hears one short line, and only when something is worth knowing.
+
+     extension_settings.rpg_body      <- settings and each character's fixed traits
+     chat_metadata.rpg_body           <- this chat: the clock, needs, cycle day, ailments, pockets
+   ============================================================ */
+const BODY = (function () {
+const MODULE_NAME = 'rpg_body';
+const PROMPT_KEY = 'rpg_body_state';
+
+const defaultSettings = {
+    enabled: false,
+    language: '',           // '' = as the Status Bar
+    needs: true,            // satiety, water, strength — wear down with the story's time
+    needsSpeed: 100,        // %
+    partEvery: 8,           // with no Scene Card clock: a new part of the day every N replies
+    cycle: true,            // the menstrual cycle of the characters who have one
+    pregnancy: false,       // a chance of pregnancy after an intimate scene — off until asked for
+    hidePregnancy: true,    // nobody knows until the period is late
+    ailments: true,         // small illnesses: from the story, and a die once a day
+    ailmentChance: 5,       // % per character per day
+    slots: true,            // the character's pockets
+    slotCount: 5,
+    dice: true,             // the body moves the relationship checks' difficulty
+    itemsSelf: true,        // they pick things up for themselves and use what is in their pockets
+    nights: true,           // a hangover after drinking, a bad day after a night without sleep
+    adrenaline: true,       // after a fight: a rush, then the crash
+    inject: true,
+    injectDepth: 2,
+    birth: true,            // at term: the newspaper window (play now / later / skip), then a child
+    pregSpeed: 1,           // one story day is this many days of a pregnancy and of a child's growing up (1, 7, 30)
+    childDesc: true,        // one model call writes the newborn's note (the Status Bar's connection)
+    babyNights: true,       // a newborn with no one else to look after it: the parents do not sleep
+    traits: {}              // per character, for good: { sex, cycle, fertile, len, period, pain, rolls }
+};
+let settings = {};
+
+/* ---------------- language: the block follows the Status Bar's switch ---------------- */
+// its own switch; left empty, it follows the Status Bar's
+function lang() {
+    if (settings && (settings.language === 'ru' || settings.language === 'en')) return settings.language;
+    try { return SB.settings().language === 'ru' ? 'ru' : 'en'; } catch (e) { return 'en'; }
+}
+const I18N = {
+    en: {
+        tab: 'Character',
+        sat: 'Satiety', hyd: 'Water', eng: 'Strength', hyg: 'Hygiene',
+        dirty: 'has not washed in a while', own_low: '{n} is running out',
+        needs_h: 'Needs', need_add: 'Add a need', need_name_ph: 'Blood, coffee…', need_icon_ph: '✦', rate: 'Wears down', rate_slow: 'slowly', rate_mid: 'normally', rate_fast: 'fast', need_del: 'Remove the need',
+        hungry: 'hungry', very_hungry: 'starving', thirsty: 'thirsty', exhausted: 'exhausted', tired: 'tired',
+        ph_period: 'Period', ph_follicular: 'Calm days', ph_ovulation: 'Ovulation', ph_luteal: 'Second half', ph_pms: 'Before the period',
+        cycle_day: 'day {d} of {n}',
+        pain0: 'no pain', pain1: 'mild cramps', pain2: 'cramps', pain3: 'strong cramps',
+        late: 'Period late · {n} d', pregnant: 'Pregnant · {w} wk',
+        no_cycle: 'No cycle', ailments: 'Ailments', none: 'Nothing hurts.',
+        pockets: 'Pockets', empty_slot: 'empty', give_me: 'Give from my backpack', take_back: 'Take back', drop: 'Remove',
+        no_backpack: 'Tavern RPG Engine is off — your backpack is not there.', backpack_empty: 'Your backpack is empty.',
+        full: '{name} has no free pocket.', gave: '{name} took: {item}', got: '{name} gave you: {item}',
+        dice_mod: 'Checks', dice_title: 'How the body moves the relationship checks right now (difficulty)',
+        days: '{n} d', remove: 'Remove',
+        more: 'Body settings', has_cycle: 'Has a cycle', fertile: 'Can have children', fert_roll: 'dice: {r}', len: 'Cycle length', period_len: 'Period days', pain: 'Period pain', set_day: 'Today is cycle day', reroll: 'Roll again',
+        sex: 'Body', sex_f: 'female', sex_m: 'male', sex_x: 'other',
+        for_who: 'For:', world_pick: 'Whose body:', nobody: 'No one to show yet.',
+        new_day: 'A new day', day_n: 'Day {n}',
+        // settings
+        s_lang: 'Language', s_lang_follow: 'As the Status Bar',
+        pill: 'Takes the pill', preg_end: 'The pregnancy is over', protected_by: 'Protected: {what}', condom_used: '{who} used a condom ({from})', from_pocket: 'from {name}\'s pocket', from_bag: 'from your backpack',
+        what_condom: 'a condom', what_pill: 'the pill', what_story: 'contraception in the scene',
+        s_enable: 'Enable the Character tab', s_needs_h: 'Needs', s_needs: 'Satiety, strength, hygiene and the needs of their own wear down with the story\'s time (which ones: in each character\'s body settings)',
+        s_speed: 'Speed, %', s_partEvery: 'No Scene Card clock: a new part of the day every N replies',
+        s_cycle_h: 'Cycle', s_cycle: 'Menstrual cycle (rolled once for each woman)', s_preg: 'A chance of pregnancy after an intimate scene', s_hide: 'Keep it hidden until the period is late',
+        s_ail_h: 'Ailments', s_ail: 'Small ailments: from the story, and a die once a day', s_ailChance: 'Chance per day, %',
+        s_slots_h: 'Pockets', s_slots: 'Pockets for things (given, taken back)', s_slotCount: 'Pockets',
+        s_dice_h: 'Dice', s_dice: 'The body moves the relationship checks (cramps, a cold, hunger: harder)',
+        s_inj_h: 'Main model', s_inj: 'Tell the main model what is worth knowing', s_depth: 'Depth',
+        s_hint: 'Nothing here calls the model. The story is read inside the Status Bar\'s own update — turn the Status Bar on for meals, sleep, ailments and things handed over to be noticed.',
+        ail_list: ['Headache', 'Toothache', 'A cold', 'Sore throat', 'Stomach ache', 'Back pain', 'A runny nose', 'Sleepless night'],
+        inj_head: 'The characters\' bodies — this is already true. Let it show only where it matters; never list it, never mention any system.',
+        inj_period: 'on her period ({pain})', inj_pms: 'the days before her period — touchier than usual', inj_ovu: 'ovulating — warmer and more drawn to closeness than usual',
+        inj_late: 'her period is {n} days late (she has not thought about why)', inj_preg: 'pregnant, about {w} weeks{knows}', inj_preg_knows: '', inj_carry: 'has with her: {list}',
+        concept_roll: 'Dice after the night with {who}: {r} — chance {c}%',
+        st_hangover: 'Hangover', st_sleepless: 'Slept badly', st_rush: 'Adrenaline', st_crash: 'After the rush', states: 'State',
+        inj_hangover: 'hungover — head heavy, light too bright', inj_sleepless: 'slept badly — slower and shorter-tempered', inj_rush: 'still running on adrenaline after the fight — bold, sharp, quick to flare', inj_crash: 'the adrenaline has worn off — shaky, drained, wants quiet',
+        s_items: 'They pick things up for themselves and use what is in their pockets', s_nights_h: 'Nights and fights', s_nights: 'Hangover after drinking, a bad day after a night without sleep', s_adren: 'Adrenaline after a fight: a rush, then the crash',
+        // pregnancy in weeks
+        trim1: '1st trimester', trim2: '2nd trimester', trim3: '3rd trimester',
+        sym1: 'nausea, odd cravings', sym2: 'the belly shows', sym3: 'heavy, tires quickly',
+        due_in: 'due in about {n} d', due_now: 'due any day now',
+        inj_trim1: 'nauseous in the mornings, odd cravings', inj_trim2: 'the belly is starting to show', inj_trim3: 'heavy now, tires quickly, her back aches',
+        inj_term: 'her time has come — the first contractions come and go',
+        st_baby: 'Newborn nights', inj_baby: 'a newborn keeps them up at night — short on sleep',
+        // children
+        children: 'Children', no_name: 'No name yet', rename: 'Rename', boy: 'boy', girl: 'girl', boy_acc: 'boy', girl_acc: 'girl',
+        age_new: 'Newborn', age_inf: 'Baby', age_tod: 'Toddler', age_kid: 'Child', age_teen: 'Teenager', age_adult: 'Grown up',
+        age_d: '{n} d', age_m: '{n} mo', age_y: '{n} y',
+        care: 'Looked after by', care_parents: 'the parents', care_other: 'Someone else…', care_ph: 'Who?',
+        from_m: 'from the mother', from_f: 'from the father', from_n: 'their own',
+        kid_desc: 'Describe', kid_redesc: 'Write again', kid_busy: 'Writing…', kid_card: 'Tavern card', kid_card_done: 'Card made',
+        kid_card_need_name: 'Give the child a name first.', kid_card_ok: 'Card made: {name}', kid_card_fail: 'The card could not be made.',
+        kid_del: 'Remove', kid_del_sure: 'Sure?', kid_desc_fail: 'The note could not be written: {e}', kid_no_key: 'The Status Bar has no connection set — the note is not written.',
+        card_parents: 'Mother: {m}. Father: {f}.', card_age: 'Age: {a}.', card_note: 'Born in a story; made by the Character tab (RPG Status Bar + Bonds).',
+        born_toast: '👶 Born: {name} ({sex})', born_log: 'Gave birth: {name}',
+        // the clipping
+        np_paper: 'Family Chronicle', np_extra: 'Special edition', np_head: '{who} has gone into labor',
+        np_lede: 'Week {w}. The father: {f}.', np_lede_nf: 'Week {w}.',
+        np_name: 'Name', np_name_ph: 'it can wait', np_care: 'Who will look after the baby', np_how: 'How it goes',
+        np_now: 'Play it now', np_now_d: 'the birth comes in the next reply', np_later: 'Later', np_later_d: 'remind me in three replies', np_skip: 'Skip', np_skip_d: 'the baby is born off-screen',
+        np_foot: 'closing it means "later"', np_stamp: 'Labor', np_close: 'Close (later)', np_open: 'Open the clipping', np_playing: 'The birth — in the next reply',
+        // for the main model — shown to her before they were added
+        named: ', named {name}',
+        labor: '{who} goes into labor now. Whatever else is happening in the story, let it break in: in this reply the contractions start and {who} gives birth to a {sex}{named}. Keep it true to the scene and to the people in it; no talk of any system.',
+        labor_p: '{who} goes into labor now. Whatever else is happening in the story, let it break in: in this reply the contractions start and the baby, a {sexn}{named}, is born. Show it through the people around her and what her body does; do not write lines or decisions for the player\'s character ({who}). No talk of any system.',
+        fact_skip: 'Off-screen, {who} has given birth to a {sex}{named}. The story picks up after it.',
+        inj_kid: 'Their baby: {name} ({age}); parents — {parents}', care_inj_parents: 'they look after the baby themselves, the nights are short', care_inj: '{who} looks after the baby',
+        // settings
+        s_birth_h: 'Birth and children', s_birth: 'At term: the newspaper window, then a child', s_pregspeed: 'One story day is',
+        sp1: 'one day of the pregnancy', sp7: 'one week', sp30: 'one month',
+        s_childdesc: 'Write the newborn\'s note (one model call, the Status Bar\'s connection)', s_babynights: 'Newborn nights: the parents do not sleep while no one else looks after the baby'
+    },
+    ru: {
+        tab: 'Персонаж',
+        sat: 'Сытость', hyd: 'Вода', eng: 'Силы', hyg: 'Гигиена',
+        dirty: 'давно не мылся(-ась)', own_low: '{n} на исходе',
+        needs_h: 'Потребности', need_add: 'Добавить потребность', need_name_ph: 'Кровь, кофе…', need_icon_ph: '✦', rate: 'Убывает', rate_slow: 'медленно', rate_mid: 'обычно', rate_fast: 'быстро', need_del: 'Убрать потребность',
+        hungry: 'голоден', very_hungry: 'очень голоден', thirsty: 'хочет пить', exhausted: 'без сил', tired: 'устал',
+        ph_period: 'Месячные', ph_follicular: 'Спокойные дни', ph_ovulation: 'Овуляция', ph_luteal: 'Вторая половина', ph_pms: 'Перед месячными',
+        cycle_day: 'день {d} из {n}',
+        pain0: 'без боли', pain1: 'слабые спазмы', pain2: 'спазмы', pain3: 'сильные спазмы',
+        late: 'Задержка · {n} дн.', pregnant: 'Беременна · {w} нед.',
+        no_cycle: 'Без цикла', ailments: 'Недомогания', none: 'Ничего не болит.',
+        pockets: 'Карманы', empty_slot: 'пусто', give_me: 'Дать из моего рюкзака', take_back: 'Забрать себе', drop: 'Убрать',
+        no_backpack: 'Tavern RPG Engine выключен — твоего рюкзака нет.', backpack_empty: 'Твой рюкзак пуст.',
+        full: 'У {name} нет свободного кармана.', gave: '{name} взял(а): {item}', got: '{name} отдал(а) тебе: {item}',
+        dice_mod: 'Броски', dice_title: 'Как тело сейчас меняет сложность бросков в отношениях',
+        days: '{n} дн.', remove: 'Убрать',
+        more: 'Настройки тела', has_cycle: 'Есть цикл', fertile: 'Может иметь детей', fert_roll: 'кубик: {r}', len: 'Длина цикла', period_len: 'Дней месячных', pain: 'Боль в месячные', set_day: 'Сегодня день цикла', reroll: 'Бросить заново',
+        sex: 'Тело', sex_f: 'женское', sex_m: 'мужское', sex_x: 'другое',
+        for_who: 'Для:', world_pick: 'Чьё тело:', nobody: 'Пока некого показать.',
+        new_day: 'Новый день', day_n: 'День {n}',
+        s_lang: 'Язык', s_lang_follow: 'Как у Статус-бара',
+        pill: 'Принимает противозачаточные', preg_end: 'Беременность закончилась', protected_by: 'Защита: {what}', condom_used: 'Использован презерватив ({from})', from_pocket: 'из кармана {name}', from_bag: 'из твоего рюкзака',
+        what_condom: 'презерватив', what_pill: 'таблетки', what_story: 'предохранялись по сюжету',
+        s_enable: 'Включить вкладку «Персонаж»', s_needs_h: 'Потребности', s_needs: 'Сытость, силы, гигиена и свои потребности убывают по времени истории (какие именно — в настройках тела каждого персонажа)',
+        s_speed: 'Скорость, %', s_partEvery: 'Без часов Scene Card: новая часть дня каждые N ответов',
+        s_cycle_h: 'Цикл', s_cycle: 'Менструальный цикл (бросается один раз для каждой женщины)', s_preg: 'Шанс беременности после интимной сцены', s_hide: 'Скрывать, пока нет задержки',
+        s_ail_h: 'Недомогания', s_ail: 'Мелкие недомогания: из сюжета и кубик раз в день', s_ailChance: 'Шанс в день, %',
+        s_slots_h: 'Карманы', s_slots: 'Карманы для вещей (отдать, забрать)', s_slotCount: 'Карманов',
+        s_dice_h: 'Кубики', s_dice: 'Тело влияет на броски в отношениях (спазмы, простуда, голод — сложнее)',
+        s_inj_h: 'Основная модель', s_inj: 'Сообщать основной модели то, что стоит знать', s_depth: 'Глубина',
+        s_hint: 'Здесь ничто не вызывает модель. Сюжет читается внутри обновления Статус-бара — включи Статус-бар, чтобы замечались еда, сон, недомогания и переданные вещи.',
+        ail_list: ['Головная боль', 'Зубная боль', 'Простуда', 'Болит горло', 'Болит живот', 'Болит спина', 'Насморк', 'Бессонная ночь'],
+        inj_head: 'Тела персонажей — это уже правда. Пусть это проявляется только там, где важно; не перечисляй и не упоминай никаких систем.',
+        inj_period: 'у неё месячные ({pain})', inj_pms: 'дни перед месячными — обидчивее обычного', inj_ovu: 'овуляция — теплее и больше тянется к близости, чем обычно',
+        inj_late: 'у неё задержка {n} дн. (она ещё не думала почему)', inj_preg: 'беременна, около {w} нед.{knows}', inj_preg_knows: '', inj_carry: 'при себе: {list}',
+        concept_roll: 'Кубик после ночи с {who}: {r} — шанс {c}%',
+        st_hangover: 'Похмелье', st_sleepless: 'Не выспался(-ась)', st_rush: 'Адреналин', st_crash: 'Отходняк', states: 'Состояние',
+        inj_hangover: 'похмелье — тяжёлая голова, свет слишком яркий', inj_sleepless: 'не выспался(-ась) — медленнее и раздражительнее', inj_rush: 'ещё на адреналине после драки — смелый(-ая), резкий(-ая), легко вспыхивает', inj_crash: 'адреналин схлынул — потряхивает, пусто, хочется тишины',
+        s_items: 'Сами берут себе вещи и пользуются тем, что в карманах', s_nights_h: 'Ночи и драки', s_nights: 'Похмелье после выпивки, разбитый день после ночи без сна', s_adren: 'Адреналин после драки: подъём, потом отходняк',
+        trim1: 'I триместр', trim2: 'II триместр', trim3: 'III триместр',
+        sym1: 'тошнота, тянет на странное', sym2: 'живот уже заметен', sym3: 'тяжело, быстро устаёт',
+        due_in: 'срок примерно через {n} дн.', due_now: 'срок подошёл',
+        inj_trim1: 'подташнивает по утрам, тянет на странное', inj_trim2: 'живот уже начинает быть заметен', inj_trim3: 'ей уже тяжело, быстро устаёт, ноет спина',
+        inj_term: 'срок подошёл — первые схватки то приходят, то отпускают',
+        st_baby: 'Ночи с малышом', inj_baby: 'новорождённый не даёт спать по ночам — не высыпается',
+        children: 'Дети', no_name: 'Пока без имени', rename: 'Переименовать', boy: 'мальчик', girl: 'девочка', boy_acc: 'мальчика', girl_acc: 'девочку',
+        age_new: 'Новорождённый', age_inf: 'Младенец', age_tod: 'Малыш', age_kid: 'Ребёнок', age_teen: 'Подросток', age_adult: 'Взрослый',
+        age_d: '{n} дн.', age_m: '{n} мес.', age_y: '{n} г.',
+        care: 'Присматривает', care_parents: 'родители', care_other: 'Кто-то другой…', care_ph: 'Кто?',
+        from_m: 'от мамы', from_f: 'от папы', from_n: 'своё',
+        kid_desc: 'Описать', kid_redesc: 'Переписать', kid_busy: 'Пишу…', kid_card: 'Карточка Таверны', kid_card_done: 'Карточка есть',
+        kid_card_need_name: 'Сначала дай ребёнку имя.', kid_card_ok: 'Карточка создана: {name}', kid_card_fail: 'Не удалось создать карточку.',
+        kid_del: 'Убрать', kid_del_sure: 'Точно?', kid_desc_fail: 'Не удалось написать описание: {e}', kid_no_key: 'У Статус-бара не настроено подключение — описание не написано.',
+        card_parents: 'Мать: {m}. Отец: {f}.', card_age: 'Возраст: {a}.', card_note: 'Родился(-ась) в истории; создано вкладкой «Персонаж» (RPG Status Bar + Bonds).',
+        born_toast: '👶 Родился(-ась): {name} ({sex})', born_log: 'Родила: {name}',
+        np_paper: 'Семейная хроника', np_extra: 'Экстренный выпуск', np_head: '{who}: схватки начались',
+        np_lede: 'Срок — {w} нед. Отец — {f}.', np_lede_nf: 'Срок — {w} нед.',
+        np_name: 'Имя', np_name_ph: 'можно потом', np_care: 'Кто будет смотреть за малышом', np_how: 'Как это будет',
+        np_now: 'Играть сейчас', np_now_d: 'роды — в следующем ответе', np_later: 'Позже', np_later_d: 'напомнить через три ответа', np_skip: 'Пропустить', np_skip_d: 'малыш родится за кадром',
+        np_foot: 'закрыть — значит «позже»', np_stamp: 'Роды', np_close: 'Закрыть (позже)', np_open: 'Развернуть вырезку', np_playing: 'Роды — в следующем ответе',
+        named: ', по имени {name}',
+        labor: '{who} рожает — прямо сейчас. Что бы ни происходило в сюжете, пусть это вмешается: в этом ответе начинаются схватки, и {who} рожает {sex}{named}. Держись сцены и характеров; никаких упоминаний систем.',
+        labor_p: '{who} рожает — прямо сейчас. Что бы ни происходило в сюжете, пусть это вмешается: в этом ответе начинаются схватки, и на свет появляется {sexn}{named}. Покажи это через людей рядом и то, что происходит с её телом; не пиши реплик и решений за персонажа игрока ({who}). Никаких упоминаний систем.',
+        fact_skip: 'За кадром {who} родила {sex}{named}. История продолжается после этого.',
+        inj_kid: 'Ребёнок: {name} ({age}); родители — {parents}', care_inj_parents: 'смотрят за малышом сами, ночи короткие', care_inj: 'за малышом смотрит {who}',
+        s_birth_h: 'Роды и дети', s_birth: 'Когда подошёл срок: газетное окошко, потом ребёнок', s_pregspeed: 'Один день истории —',
+        sp1: 'один день беременности', sp7: 'одна неделя', sp30: 'один месяц',
+        s_childdesc: 'Писать описание новорождённого (один вызов модели, подключение Статус-бара)', s_babynights: 'Ночи с малышом: родители не высыпаются, пока за ним никто другой не смотрит'
+    }
+};
+function t(key, vars) {
+    let s = (I18N[lang()] || I18N.en)[key];
+    if (s === undefined) s = I18N.en[key];
+    if (s === undefined) return key;
+    if (typeof s === 'string' && vars) for (const k in vars) s = s.split('{' + k + '}').join(vars[k]);
+    return s;
+}
+function esc(x) { return String(x ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+function d100() { return 1 + Math.floor(Math.random() * 100); }
+function genId() { return Math.random().toString(36).slice(2, 10); }
+function keyOf(name) { return String(name || '').trim().toLowerCase(); }
+
+/* ---------------- settings ---------------- */
+function loadSettings() {
+    if (!extension_settings[MODULE_NAME]) extension_settings[MODULE_NAME] = {};
+    settings = Object.assign({}, defaultSettings, extension_settings[MODULE_NAME]);
+    if (!settings.traits || typeof settings.traits !== 'object') settings.traits = {};
+    ['needsSpeed', 'partEvery', 'ailmentChance', 'slotCount', 'injectDepth'].forEach(k => { if (!Number.isFinite(+settings[k])) settings[k] = defaultSettings[k]; });
+    if (![1, 7, 30].includes(+settings.pregSpeed)) settings.pregSpeed = 1;
+    settings.pregSpeed = +settings.pregSpeed;
+}
+function saveSettings() { extension_settings[MODULE_NAME] = settings; saveSettingsDebounced(); }
+function on() { return !!settings.enabled; }
+
+/* ---------------- the chat's own state ---------------- */
+function chatState() {
+    const md = getContext().chatMetadata;
+    if (!md) return null;
+    if (!md.rpg_body || typeof md.rpg_body !== 'object') md.rpg_body = {};
+    const s = md.rpg_body;
+    if (!Number.isFinite(s.day)) s.day = 1;
+    if (!s.chars || typeof s.chars !== 'object') s.chars = {};
+    if (!Number.isFinite(s.partTick)) s.partTick = 0;
+    if (!Number.isFinite(s.turn)) s.turn = 0;
+    if (typeof s.part !== 'string') s.part = '';
+    if (typeof s.dateKey !== 'string') s.dateKey = '';
+    if (!s.lastRead || typeof s.lastRead !== 'object') s.lastRead = {};
+    if (!Array.isArray(s.children)) s.children = [];
+    if (s.birth && typeof s.birth !== 'object') s.birth = null;
+    return s;
+}
+function saveChat() { saveChatDebounced(); }
+
+/* Who is a woman, who has a cycle, can she have children, how long and how painful —
+   rolled ONCE for each character and kept for good, the same in every chat. */
+function genderOf(name) {
+    try { const npc = TBE.npcFor(name); if (npc && (npc.gender === 'f' || npc.gender === 'm')) return npc.gender; } catch (e) { /* no Bonds page */ }
+    const ch = characters.find(c => c && c.name === name);
+    if (ch) { const g = TBE.guessGender([ch.description, ch.personality].filter(Boolean).join('\n')); if (g) return g; }
+    return null;
+}
+function rollTraits(name) {
+    const sex = genderOf(name) || 'x';
+    const r = { fert: d100(), len: d100(), period: d100(), pain: d100() };
+    return {
+        name, sex,
+        cycle: sex === 'f',
+        fertile: r.fert > 12,                                  // about one in eight cannot
+        len: 25 + Math.floor((r.len - 1) / 100 * 9),            // 25–33 days
+        period: 3 + Math.floor((r.period - 1) / 100 * 5),       // 3–7 days
+        pain: r.pain <= 20 ? 0 : r.pain <= 62 ? 1 : r.pain <= 88 ? 2 : 3,
+        rolls: r, at: Date.now()
+    };
+}
+function traitsOf(name) {
+    const k = keyOf(name);
+    if (!k) return null;
+    let tr = settings.traits[k];
+    if (!tr || typeof tr !== 'object') { tr = rollTraits(name); settings.traits[k] = tr; saveSettings(); }
+    // a gender learned later (the Bonds page was made after the first roll) settles an unknown body
+    if (tr.sex === 'x') { const g = genderOf(name); if (g) { tr.sex = g; tr.cycle = g === 'f'; saveSettings(); } }
+    return tr;
+}
+function charOf(name, create = true) {
+    const s = chatState();
+    if (!s) return null;
+    const k = keyOf(name);
+    if (!k) return null;
+    if (!s.chars[k]) {
+        if (!create) return null;
+        const tr = traitsOf(name);
+        s.chars[k] = {
+            name, sat: 80, eng: 85, hyg: 90, own: {}, merged: true, ailments: [], slots: [],
+            // somewhere in her cycle when the story meets her
+            cycleStart: s.day - Math.floor(Math.random() * (tr && tr.len ? tr.len : 28)),
+            preg: null, lastIntim: -99, log: [], sleptSince: true
+        };
+        saveChat();
+    }
+    const c = s.chars[k];
+    if (!Array.isArray(c.ailments)) c.ailments = [];
+    if (!Array.isArray(c.slots)) c.slots = [];
+    if (!Array.isArray(c.log)) c.log = [];
+    // food and water were two scales before: one "Satiety" now, as in RPG Vitals — the two averaged once
+    if (!c.merged) { if (Number.isFinite(c.hyd)) c.sat = Math.round(((Number.isFinite(c.sat) ? c.sat : 80) + c.hyd) / 2); delete c.hyd; c.merged = true; }
+    if (!Number.isFinite(c.hyg)) c.hyg = 90;
+    if (!c.own || typeof c.own !== 'object') c.own = {};
+    return c;
+}
+/* Which needs this character has — chosen per character, kept with the body for good (a vampire:
+   no satiety, a need of its own called "Blood"). Satiety, strength and hygiene are on until switched off. */
+const OWN_RATE = { slow: 6, mid: 12, fast: 22 };   // a part of the day costs this much
+function needsOf(name) {
+    const tr = traitsOf(name);
+    if (!tr) return { sat: true, eng: true, hyg: true, own: [] };
+    if (!tr.needs || typeof tr.needs !== 'object') tr.needs = {};
+    const n = tr.needs;
+    ['sat', 'eng', 'hyg'].forEach(k => { if (typeof n[k] !== 'boolean') n[k] = true; });
+    if (!Array.isArray(n.own)) n.own = [];
+    return n;
+}
+function ownVal(c, o) { const v = c.own[o.id]; return Number.isFinite(v) ? v : 80; }
+function logIt(c, text) { c.log.push({ day: chatState().day, text }); c.log = c.log.slice(-8); }
+
+/* ---------------- the cycle ---------------- */
+function cycleInfo(name) {
+    const tr = traitsOf(name), c = charOf(name), s = chatState();
+    if (!tr || !c || !s || !settings.cycle || !tr.cycle) return null;
+    const len = clamp(tr.len || 28, 21, 40), per = clamp(tr.period || 5, 2, 9);
+    if (c.preg) {
+        // the cycle stops; the period she expected simply does not come
+        const expect = c.cycleStart + len * Math.max(1, Math.ceil((c.preg.day - c.cycleStart + 1) / len));
+        return Object.assign(pregInfo(c.preg, s, expect), { len, per });
+    }
+    const cd = ((((s.day - c.cycleStart) % len) + len) % len) + 1;
+    const ovu = len - 14;
+    let phase = 'follicular';
+    if (cd <= per) phase = 'period';
+    else if (cd >= ovu - 1 && cd <= ovu + 1) phase = 'ovulation';
+    else if (cd >= len - 3) phase = 'pms';
+    else if (cd > ovu + 1) phase = 'luteal';
+    const fertile = cd >= ovu - 5 && cd <= ovu + 1;
+    return { preg: false, cd, len, per, phase, fertile, ovu, pain: phase === 'period' ? (tr.pain || 0) : 0 };
+}
+/* ---------------- the pregnancy, in weeks ----------------
+   The days of a pregnancy are counted on the pregnancy itself (gd: days since the night),
+   one story day adding pregSpeed of them — so changing the speed changes what is still
+   to come, never what has already passed. Weeks are told as a doctor tells them: from
+   the last period, two weeks before the night. Term is about forty weeks, rolled once. */
+function pregSpeed() { const v = +settings.pregSpeed; return v === 7 || v === 30 ? v : 1; }
+function gestDays(p, s) {
+    const today = s ? s.day : p.day;
+    if (!Number.isFinite(p.gd)) { p.gd = Math.max(0, today - p.day); p.gdDay = today; }   // a pregnancy from before: its days so far
+    if (!Number.isFinite(p.gdDay)) p.gdDay = today;
+    if (today !== p.gdDay) { p.gd = Math.max(0, p.gd + (today - p.gdDay) * pregSpeed()); p.gdDay = today; }
+    return p.gd;
+}
+// a child's days, the same way
+function ageDays(ch, s) {
+    const today = s ? s.day : ch.born;
+    if (!Number.isFinite(ch.ageD)) { ch.ageD = 0; ch.ageDay = Number.isFinite(ch.born) ? ch.born : today; }
+    if (!Number.isFinite(ch.ageDay)) ch.ageDay = today;
+    if (today !== ch.ageDay) { ch.ageD = Math.max(0, ch.ageD + (today - ch.ageDay) * pregSpeed()); ch.ageDay = today; }
+    return ch.ageD;
+}
+// everything counted up to today at the old speed — before the speed changes
+function syncDays() {
+    const s = chatState(); if (!s) return;
+    Object.values(s.chars).forEach(c => { if (c.preg) gestDays(c.preg, s); });
+    s.children.forEach(ch => ageDays(ch, s));
+}
+function dueGd(p) {
+    if (!Number.isFinite(p.due)) p.due = 266 + Math.round((d100() - 50) / 5);      // 256–276 days: 38½–41½ weeks
+    return p.due;
+}
+function trimester(w) { return w <= 13 ? 1 : w <= 27 ? 2 : 3; }
+function pregInfo(p, s, expect) {
+    const gd = gestDays(p, s), due = dueGd(p), sp = pregSpeed();
+    // late: how far past the period she expected — on the pregnancy's own days
+    const late = Math.max(0, Math.floor(gd - (expect - p.day)));
+    const weeks = Math.max(1, Math.floor(gd / 7) + 2);
+    const known = !settings.hidePregnancy || late >= 14 || weeks >= 14;
+    return { preg: true, late, weeks, known, trim: trimester(weeks), gd, due, term: gd >= due, dueIn: Math.max(0, Math.ceil((due - gd) / sp)) };
+}
+// the chance of a child from one night, by the day of her cycle
+function conceptionChance(ci) {
+    if (!ci || ci.preg) return 0;
+    if (ci.phase === 'period') return 0.5;
+    if (ci.cd === ci.ovu - 1 || ci.cd === ci.ovu) return 30;
+    if (ci.fertile) return 15;
+    return 1;
+}
+function onIntimacy(detail) {
+    try {
+        if (!on() || !detail || detail.level !== 'sex') return;
+        const s = chatState(); if (!s) return;
+        if (detail.chatId && detail.chatId !== getContext().chatId) return;
+        const who = String(detail.with || '').trim();
+        // the partner named by the scene, else the one who wrote the reply
+        const msg = Number.isInteger(detail.messageId) ? getContext().chat[detail.messageId] : null;
+        const name = who && knownName(who) || (msg && !msg.is_user ? msg.name : '');
+        if (!name) return;
+        const c = charOf(name);
+        if (!c) return;
+        // Vitals and Bonds may both report the same night: one scene is one roll
+        if (s.turn - c.lastIntim <= 2) return;
+        c.lastIntim = s.turn;
+        const tr = traitsOf(name);
+        // the player is a woman too (RPG Vitals says so): no child from this night
+        let playerF = false;
+        try { playerF = (extension_settings.rpg_vitals || {}).playerSex === 'f'; } catch (e) { playerF = false; }
+        if (playerF || !settings.pregnancy || !settings.cycle || !tr || !tr.cycle || !tr.fertile || c.preg) { saveChat(); return; }
+        const ci = cycleInfo(name);
+        const prot = protectionFor(detail, name, tr);
+        const chance = Math.round(conceptionChance(ci) * prot.mul * 100) / 100;
+        const roll = d100();
+        if (prot.what.length) logIt(c, t('protected_by', { what: prot.what.join(', ') }));
+        logIt(c, t('concept_roll', { who: userName(), r: roll, c: chance }));
+        if (roll <= chance) c.preg = { day: s.day, roll, chance, gd: 0, gdDay: s.day, father: userName() };
+        saveChat();
+        refresh();
+    } catch (e) { console.warn('[Character] intimacy', e); }
+}
+function userName() { try { return getContext().name1 || 'User'; } catch (e) { return 'User'; } }
+/* Contraception on a night: the scene said they used it, she takes the pill, or there is a condom
+   in her pocket or in the player's backpack — used up, once. The event is shared with RPG Vitals,
+   so the condom taken here is marked on it and the player's side does not take a second one. */
+const CONDOM_RE = /презерватив|кондом|condom|rubber/i;
+function useCondom(detail, name) {
+    if (detail.condomUsed) return true;
+    const c = charOf(name, false);
+    if (c) {
+        const i = c.slots.findIndex(x => CONDOM_RE.test(x.name));
+        if (i >= 0) { c.slots.splice(i, 1); detail.condomUsed = true; toastr.info(t('condom_used', { who: name, from: t('from_pocket', { name }) })); return true; }
+    }
+    const v = inv();
+    const hit = v ? (v.list() || []).find(x => CONDOM_RE.test(x.name)) : null;
+    if (hit) { v.remove(hit.id); detail.condomUsed = true; toastr.info(t('condom_used', { who: name, from: t('from_bag') })); return true; }
+    return false;
+}
+function protectionFor(detail, name, tr) {
+    let mul = 1; const what = [];
+    if (detail.protected) { mul *= 0.1; what.push(t('what_story')); }
+    else if (useCondom(detail, name)) { mul *= 0.1; what.push(t('what_condom')); }
+    if (tr && tr.pill) { mul *= 0.02; what.push(t('what_pill')); }
+    return { mul, what };
+}
+// a name as the scene wrote it, matched to someone this chat knows ("Lisa" for "Lisa Rowe")
+function knownName(raw) {
+    const k = keyOf(raw);
+    const s = chatState();
+    const names = new Set(Object.values(s ? s.chars : {}).map(c => c.name));
+    try { Object.values((TBE.state() || {}).npcs || {}).forEach(n => names.add(n.name)); } catch (e) { /* no Bonds */ }
+    cast().forEach(n => names.add(n));
+    const list = [...names];
+    return list.find(n => keyOf(n) === k)
+        || list.find(n => keyOf(n).split(/\s+/)[0] === k.split(/\s+/)[0] && k.length >= 3)
+        || null;
+}
+
+// over (a birth, a loss, an abortion — the story says which): her cycle starts again from today
+function endPregnancy(c) {
+    const s = chatState();
+    c.preg = null;
+    // a birth still waiting for her goes with it (ended by hand, or a loss)
+    if (s && s.birth && s.birth.key === keyOf(c.name)) { s.birth = null; closeBirth(); }
+    if (s) c.cycleStart = s.day;
+    logIt(c, t('preg_end'));
+}
+
+/* ---------------- the clock ---------------- */
+const PARTS = ['morning', 'day', 'evening', 'night'];
+function partOf(timeText) {
+    const x = String(timeText || '').toLowerCase();
+    const hm = x.match(/(\d{1,2})[:.](\d{2})/);
+    if (hm) { const h = +hm[1] % 24; return h >= 5 && h < 12 ? 'morning' : h >= 12 && h < 17 ? 'day' : h >= 17 && h < 22 ? 'evening' : 'night'; }
+    if (/утр|morning|dawn|рассвет|sunrise/.test(x)) return 'morning';
+    if (/вечер|evening|dusk|закат|sunset/.test(x)) return 'evening';
+    if (/ноч|night|midnight|полноч/.test(x)) return 'night';
+    if (/дн[её]м|день|полдень|afternoon|noon|midday|day/.test(x)) return 'day';
+    return '';
+}
+// one part of the day passes for everyone this chat knows
+function passPart(toPart) {
+    const s = chatState(); if (!s) return;
+    const next = toPart || PARTS[(Math.max(0, PARTS.indexOf(s.part)) + 1) % 4];
+    const sp = clamp(+settings.needsSpeed || 100, 25, 300) / 100;
+    Object.values(s.chars).forEach(c => {
+        if (!settings.needs) return;
+        const nd = needsOf(c.name);
+        if (!Number.isFinite(c.hyg)) charOf(c.name);   // an old record: brought up to date first
+        if (nd.sat) c.sat = clamp(Math.round(c.sat - 18 * sp), 0, 100);
+        if (nd.eng) c.eng = clamp(Math.round(c.eng - (s.part === 'night' ? 22 : 9) * sp), 0, 100);   // a night without sleep costs the most
+        if (nd.hyg) c.hyg = clamp(Math.round(c.hyg - 8 * sp), 0, 100);
+        nd.own.forEach(o => { c.own[o.id] = clamp(Math.round(ownVal(c, o) - (OWN_RATE[o.rate] || 12) * sp), 0, 100); });
+    });
+    if (next === 'morning') newDay();
+    s.part = next;
+}
+function newDay() {
+    const s = chatState(); if (!s) return;
+    s.day += 1;
+    syncDays();   // the pregnancies and the children count their own days: a story day is pregSpeed of them
+    Object.values(s.chars).forEach(c => {
+        // the night that just ended: slept through it or not; drank the evening before or not
+        if (settings.nights) {
+            // only someone the story kept awake: they spoke during the night and nobody saw them sleep
+            c.sleepless = !!c.nightActive && c.sleptSince === false;
+            if (Number.isFinite(c.drunkDay) && c.drunkDay === s.day - 1) c.hangoverDay = s.day;
+        }
+        c.sleptSince = false;
+        c.nightActive = false;
+        c.ailments = c.ailments.filter(a => { if (!Number.isFinite(a.days)) return true; a.days -= 1; return a.days > 0; });
+        if (settings.ailments && d100() <= clamp(+settings.ailmentChance || 0, 0, 50)) {
+            const list = t('ail_list');
+            const free = list.filter(n => !c.ailments.some(a => keyOf(a.name) === keyOf(n)));
+            if (free.length) { const nm = free[Math.floor(Math.random() * free.length)]; c.ailments.push({ id: genId(), name: nm, days: 1 + Math.floor(Math.random() * 3), from: 'dice' }); logIt(c, '🎲 ' + nm); }
+        }
+    });
+}
+// the Scene Card moved its clock: the parts of the day between then and now pass
+function onScene() {
+    try {
+        if (!on()) return;
+        const s = chatState(); if (!s) return;
+        const sc = window.RPG && window.RPG.scene && window.RPG.scene.available && window.RPG.scene.get ? window.RPG.scene.get() : null;
+        if (!sc) return;
+        const part = partOf(sc.time || sc.timeLabel || '');
+        const dk = String(sc.date || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+        if (!part) return;
+        s.clock = 'scene';
+        if (!s.part) { s.part = part; s.dateKey = dk; saveChat(); return; }   // the first look at the clock sets it, nothing passes
+        const from = PARTS.indexOf(s.part), to = PARTS.indexOf(part);
+        let steps = 0;
+        if (dk && s.dateKey && dk !== s.dateKey) steps = (4 - from) + to;          // the next day (or later: counted as one)
+        else if (to > from) steps = to - from;
+        else if (to < from && !dk) steps = (4 - from) + to;                         // no date: the clock came round
+        steps = clamp(steps, 0, 8);
+        for (let i = 0; i < steps; i++) passPart(i === steps - 1 ? part : null);
+        if (dk) s.dateKey = dk;
+        if (steps) { checkTerm(); saveChat(); updateInjection(); refresh(); }
+    } catch (e) { console.warn('[Character] clock', e); }
+}
+// every bot reply: the turn counter; with no Scene Card clock, the replies are the clock
+function onReply(speaker) {
+    if (!on()) return;
+    const s = chatState(); if (!s) return;
+    s.turn += 1;
+    // "play now" was chosen before this reply: the birth was in it
+    if (s.birth && s.birth.stage === 'playing' && s.turn > s.birth.at) deliver({ played: true });
+    // awake in the night: who wrote a reply then
+    if (speaker && s.part === 'night') { const c = charOf(speaker, false); if (c) c.nightActive = true; }
+    const sceneOn = !!(window.RPG && window.RPG.scene && window.RPG.scene.available && window.RPG.scene.isEnabled && window.RPG.scene.isEnabled());
+    if (!sceneOn || s.clock !== 'scene') {
+        s.partTick += 1;
+        if (s.partTick >= clamp(+settings.partEvery || 8, 2, 60)) { s.partTick = 0; if (!s.part) s.part = 'day'; passPart(); }
+    }
+    checkTerm();
+    saveChat();
+    updateInjection();
+    refresh();
+}
+
+/* ---------------- what the Status Bar's update read in the story ---------------- */
+function fromStatus(charName, body, messageId) {
+    try {
+        if (!on() || !body || typeof body !== 'object') return;
+        const s = chatState(); if (!s) return;
+        const k = keyOf(charName);
+        // a recalculation of an older message must not hand the same umbrella over twice
+        if (Number.isInteger(messageId) && Number.isInteger(s.lastRead[k]) && messageId <= s.lastRead[k]) return;
+        if (Number.isInteger(messageId)) s.lastRead[k] = messageId;
+        const c = charOf(charName);
+        if (!c) return;
+        const yes = v => v === true || v === 'true';
+        if (settings.needs) {
+            const nd = needsOf(charName);
+            // one satiety: a meal fills it much, a drink a little
+            if (yes(body.ate)) c.sat = clamp(c.sat + 55, 0, 100);
+            if (yes(body.drank)) c.sat = clamp(c.sat + 15, 0, 100);
+            if (yes(body.slept)) c.eng = Math.max(c.eng, 92);
+            if (nd.hyg && yes(body.washed)) c.hyg = 100;
+            (Array.isArray(body.refilled) ? body.refilled : []).slice(0, 6).forEach(n => {
+                const o = nd.own.find(x => keyOf(x.name) === keyOf(n) || same(x.name, n));
+                if (o) c.own[o.id] = 100;
+            });
+        }
+        if (yes(body.slept)) { c.sleptSince = true; c.sleepless = false; }
+        // the story ended it: while the birth is waiting (her term came), that is the birth
+        if (c.preg && yes(body.pregnancy_ended)) {
+            if (s.birth && s.birth.key === k) deliver({ played: true });
+            else endPregnancy(c);
+        }
+        if (settings.nights && yes(body.drank_alcohol)) c.drunkDay = s.day;   // the morning after is tomorrow
+        if (settings.adrenaline && yes(body.fought)) c.adrenTurn = s.turn;
+        if (settings.ailments) {
+            (Array.isArray(body.new_ailments) ? body.new_ailments : []).slice(0, 3).forEach(a => {
+                const nm = String((a && (a.name || a)) || '').trim().slice(0, 40);
+                if (!nm || c.ailments.some(x => keyOf(x.name) === keyOf(nm))) return;
+                c.ailments.push({ id: genId(), name: nm, days: clamp(parseInt(a && a.days, 10) || 2, 1, 14), from: 'story' });
+            });
+            (Array.isArray(body.healed) ? body.healed : []).forEach(n => { const kk = keyOf(n); c.ailments = c.ailments.filter(a => keyOf(a.name) !== kk && !keyOf(a.name).includes(kk)); });
+        }
+        if (settings.slots) {
+            (Array.isArray(body.got_from_player) ? body.got_from_player : []).slice(0, 3).forEach(n => takeFromPlayer(charName, n, true));
+            (Array.isArray(body.gave_to_player) ? body.gave_to_player : []).slice(0, 3).forEach(n => giveToPlayer(charName, n, true));
+            if (settings.itemsSelf) {
+                // picked up for themselves (not from the player): into a free pocket
+                (Array.isArray(body.picked_up) ? body.picked_up : []).slice(0, 3).forEach(n => {
+                    const nm = String(n || '').trim().slice(0, 60);
+                    if (!nm || c.slots.length >= slotCap() || c.slots.some(x => same(x.name, nm))) return;
+                    c.slots.push({ id: genId(), name: nm, desc: '', from: 'own', item: null });
+                    logIt(c, '+ ' + nm);
+                });
+                // used up, eaten, given to someone else: out of the pocket
+                (Array.isArray(body.used_up) ? body.used_up : []).slice(0, 3).forEach(n => {
+                    const i = c.slots.findIndex(x => same(x.name, n));
+                    if (i >= 0) logIt(c, '− ' + c.slots.splice(i, 1)[0].name);
+                });
+            }
+        }
+        saveChat(); updateInjection(); refresh();
+    } catch (e) { console.warn('[Character] status read', e); }
+}
+// the extra the Status Bar asks for, in its own request — shown to her before it was added
+function statusAsk(charName) {
+    if (!on()) return '';
+    const u = userName();
+    // the extra questions, each only when its switch is on
+    const c0 = charOf(charName, false);
+    let more = '';
+    if (settings.slots && settings.itemsSelf) more += `\n- picked_up: things ${charName} took for themselves from the scene (not from ${u}). used_up: things from ${charName}'s own pockets that ${charName} used up, ate, drank, broke or gave to someone other than ${u} — including what ${u} has just handed over, if ${charName} ate or used it there. ${charName}'s pockets now: ${c0 && c0.slots.length ? c0.slots.map(x => x.name).join(', ') : 'empty'}.`;
+    // the needs this character has: washing, and needs of their own
+    const nd0 = settings.needs ? needsOf(charName) : null;
+    const askWash = !!(nd0 && nd0.hyg), askOwn = nd0 && nd0.own.length ? nd0.own.map(o => o.name) : [];
+    if (askWash) more += `\n- washed: true only if ${charName} personally bathed, showered or washed up there.`;
+    if (askOwn.length) more += `\n- refilled: which of ${charName}'s own needs (${askOwn.join(', ')}) ${charName} clearly satisfied there, by name. Empty if none.`;
+    if (settings.nights) more += `\n- drank_alcohol: true only if ${charName} actually got drunk or drank a lot of alcohol there.`;
+    if (settings.adrenaline) more += `\n- fought: true only if ${charName} was in a real fight there (blows, weapons, a struggle), not an argument.`;
+    const preg = c0 && c0.preg;
+    if (preg) more += `\n- pregnancy_ended: true only if the story clearly ends ${charName}'s pregnancy there (a birth, a miscarriage, an abortion).`;
+    return `
+6. Also report what happened to ${charName}'s body and belongings in the NEW part of the story only (after the line "=== NEW ==="), in a "body" object:
+"body": {"ate": false, "drank": false, "slept": false, "new_ailments": [{"name": "", "days": 1}], "healed": [], "got_from_player": [], "gave_to_player": []${settings.slots && settings.itemsSelf ? ', "picked_up": [], "used_up": []' : ''}${settings.nights ? ', "drank_alcohol": false' : ''}${settings.adrenaline ? ', "fought": false' : ''}${c0 && c0.preg ? ', "pregnancy_ended": false' : ''}${askWash ? ', "washed": false' : ''}${askOwn.length ? ', "refilled": []' : ''}}
+- ate / drank / slept: true only if ${charName} personally ate something, drank, or slept through a night there — never for what someone else in the scene did (${u}, another character, an animal).
+- new_ailments: a small illness or injury ${charName} clearly got (a cold, a sprained ankle, a toothache) and how many days it lasts (1-7). healed: names of ailments that clearly passed.
+- got_from_player: things ${u} actually handed to ${charName}, or ${charName} took from ${u}, by name. gave_to_player: things ${charName} actually handed to ${u}.${more}
+Leave everything false or empty when nothing like that happened. ${lang() === 'ru' ? 'Write the names in Russian.' : 'Write the names in English.'}`;
+}
+
+/* ---------------- pockets, and the player's backpack (Tavern RPG Engine) ---------------- */
+function inv() { const v = window.RPG && window.RPG.inventory; return v && v.available && (!v.isEnabled || v.isEnabled()) ? v : null; }
+function same(a, b) {
+    const x = keyOf(a), y = keyOf(b);
+    if (!x || !y) return false;
+    try { if (window.RPG && window.RPG.match && window.RPG.match.same(x, y)) return true; } catch (e) { /* no matcher */ }
+    return x === y || (x.length >= 4 && y.includes(x)) || (y.length >= 4 && x.includes(y));
+}
+function slotCap() { return clamp(parseInt(settings.slotCount, 10) || 5, 1, 8); }
+// a thing from the player's backpack (by name, or the item itself) into the character's pocket
+function takeFromPlayer(charName, nameOrItem, quiet = false) {
+    const c = charOf(charName); if (!c) return false;
+    if (c.slots.length >= slotCap()) { toastr.info(t('full', { name: charName })); return false; }
+    const v = inv();
+    let item = null;
+    if (nameOrItem && typeof nameOrItem === 'object') item = nameOrItem;
+    else if (v) {
+        const hit = (v.list() || []).find(i => same(i.name, nameOrItem));
+        if (hit) item = v.remove(hit.id);
+    }
+    const nm = String(item ? item.name : nameOrItem || '').trim().slice(0, 60);
+    if (!nm) return false;
+    c.slots.push({ id: genId(), name: nm, desc: item && item.desc ? String(item.desc).slice(0, 200) : '', from: 'player', item: item || null });
+    saveChat();
+    toastr.info(t('gave', { name: charName, item: nm }));
+    if (!quiet) { updateInjection(); refresh(); }
+    return true;
+}
+// from the character's pocket (or, when the story says so, out of nowhere) into the player's backpack
+function giveToPlayer(charName, nameOrId, quiet = false) {
+    const c = charOf(charName); if (!c) return false;
+    const i = c.slots.findIndex(sl => sl.id === nameOrId || same(sl.name, nameOrId));
+    const slot = i >= 0 ? c.slots.splice(i, 1)[0] : null;
+    const nm = slot ? slot.name : String(nameOrId || '').trim().slice(0, 60);
+    if (!nm) return false;
+    const v = inv();
+    if (v) v.add(slot && slot.item ? slot.item : { name: nm, desc: slot ? slot.desc : '', type: 'misc' });
+    saveChat();
+    toastr.info(t('got', { name: charName, item: nm }));
+    if (!quiet) { updateInjection(); refresh(); }
+    return true;
+}
+
+/* ---------------- today's states: a hangover, a bad night, the adrenaline of a fight ---------------- */
+function stateBits(c) {
+    const s = chatState(); const out = [];
+    if (!c || !s) return out;
+    if (settings.nights) {
+        if (c.hangoverDay === s.day && (s.part === 'morning' || s.part === 'day' || !s.part)) out.push('hangover');
+        if (c.sleepless) out.push('sleepless');
+    }
+    if (settings.adrenaline && Number.isFinite(c.adrenTurn)) {
+        const d = s.turn - c.adrenTurn;
+        if (d >= 0 && d <= 2) out.push('rush');
+        else if (d >= 3 && d <= 5) out.push('crash');
+    }
+    if (babyNights(c.name)) out.push('baby');
+    return out;
+}
+
+/* ---------------- what the body does to the relationship dice ---------------- */
+function needBits(c) {
+    const out = [];
+    if (!settings.needs || !c) return out;
+    const nd = needsOf(c.name);
+    if (nd.sat) { if (c.sat < 10) out.push('very_hungry'); else if (c.sat < 25) out.push('hungry'); }
+    if (nd.eng) { if (c.eng < 15) out.push('exhausted'); else if (c.eng < 30) out.push('tired'); }
+    if (nd.hyg && c.hyg < 20) out.push('dirty');
+    nd.own.forEach(o => { if (ownVal(c, o) < 20) out.push('own:' + o.name); });
+    return out;
+}
+function dcMod(name) {
+    if (!on() || !settings.dice) return 0;
+    const c = charOf(name, false); if (!c) return 0;
+    let m = 0;
+    const ci = cycleInfo(name);
+    if (ci && !ci.preg) {
+        if (ci.phase === 'period') m += [0, 1, 2, 2][ci.pain || 0];
+        else if (ci.phase === 'pms') m += 1;
+        else if (ci.phase === 'ovulation') m -= 1;
+    }
+    // the first months (nausea) and the last (heavy) make it harder; the middle ones do not
+    if (ci && ci.preg && ci.weeks >= 5 && ci.trim !== 2) m += 1;
+    m += Math.min(2, c.ailments.length);
+    m += Math.min(2, needBits(c).length);
+    stateBits(c).forEach(b => { m += b === 'rush' ? -1 : 1; });   // a rush makes them bolder; the rest make it harder
+    return clamp(m, -1, 4);
+}
+
+/* ---------------- the line for the main model ---------------- */
+// who is in the scene: whoever wrote the last ten replies
+function presentNames() {
+    const out = new Set();
+    (getContext().chat || []).slice(-10).forEach(m => { if (m && !m.is_user && !m.is_system && m.name) out.add(m.name); });
+    return [...out];
+}
+function updateInjection() {
+    try {
+        if (!on() || !getContext().chatId) { setExtensionPrompt(PROMPT_KEY, '', 1, 0, false); setExtensionPrompt(BIRTH_KEY, '', 1, 0, false); return; }
+        const s = chatState(); if (!s) return;
+        // the birth: "play now" is a directive for the next reply (asked for by hand, so it goes even with
+        // the line below switched off); a skipped birth is one fact, told for three replies
+        let bt = '';
+        if (settings.birth && s.birth && s.birth.stage === 'playing') bt = laborDirective(s.birth);
+        else if (s.fact && s.turn < s.fact.until) bt = `[${s.fact.text}]`;
+        setExtensionPrompt(BIRTH_KEY, bt, 1, 0, false, extension_prompt_roles.SYSTEM);
+        if (!settings.inject) { setExtensionPrompt(PROMPT_KEY, '', 1, 0, false); return; }
+        const lines = [];
+        presentNames().forEach(name => {
+            if (isWorldName(name)) return;
+            const c = charOf(name, false); if (!c) return;
+            const bits = needBits(c).map(k => k.startsWith('own:') ? t('own_low', { n: k.slice(4) }) : t(k));
+            const ci = cycleInfo(name);
+            if (ci) {
+                if (ci.preg) {
+                    if (ci.known) bits.push(t('inj_preg', { w: ci.weeks, knows: '' }) + (ci.weeks >= 5 ? ' — ' + t('inj_trim' + ci.trim) : ''));
+                    else if (ci.late >= 1) bits.push(t('inj_late', { n: ci.late }) + (ci.weeks >= 5 ? '; ' + t('inj_trim1') : ''));
+                    if (s.birth && s.birth.key === keyOf(name) && s.birth.stage === 'later') bits.push(t('inj_term'));
+                }
+                else if (ci.phase === 'period') bits.push(t('inj_period', { pain: t('pain' + (ci.pain || 0)) }));
+                else if (ci.phase === 'pms') bits.push(t('inj_pms'));
+                else if (ci.phase === 'ovulation') bits.push(t('inj_ovu'));
+            }
+            c.ailments.forEach(a => bits.push(String(a.name).toLowerCase()));
+            stateBits(c).forEach(b => bits.push(t('inj_' + b)));
+            if (settings.slots && c.slots.length) bits.push(t('inj_carry', { list: c.slots.map(x => x.name).join(', ') }));
+            if (bits.length) lines.push(`${name}: ${bits.join('; ')}.`);
+        });
+        childLines().forEach(l => lines.push(l));
+        const text = lines.length ? `[${t('inj_head')}]\n${lines.join('\n')}` : '';
+        setExtensionPrompt(PROMPT_KEY, text, 1, clamp(parseInt(settings.injectDepth, 10) || 0, 0, 20), false, extension_prompt_roles.SYSTEM);
+    } catch (e) { console.warn('[Character] injection', e); }
+}
+
+/* ---------------- birth and children ----------------
+   At term a newspaper clipping drops in (the style of the twist clipping): play the birth now
+   (a directive for the next reply, after which the child is there), later (it waits, reminded
+   in three replies), or skip (born off-screen, one fact told to the main model for a few
+   replies). The child is a record of this chat: sex by a die, each trait by a die from the
+   mother, the father or its own, an age counted in story days at the pregnancy's speed. */
+const PLAYER_KEY = '__player';
+const BIRTH_KEY = 'rpg_body_birth';
+const STAGES = [[90, 'new'], [365, 'inf'], [1095, 'tod'], [4745, 'kid'], [6570, 'teen'], [Infinity, 'adult']];
+function ageStage(d) { const n = Number.isFinite(d) ? d : 0; return STAGES.find(x => n < x[0])[1]; }
+function ageText(d) {
+    const n = Math.max(0, Math.floor(Number.isFinite(d) ? d : 0));
+    if (n < 61) return t('age_d', { n });
+    if (n < 730) return t('age_m', { n: Math.floor(n / 30.4) });
+    return t('age_y', { n: Math.floor(n / 365.25) });
+}
+function isParent(ch, name) { const k = keyOf(name); return !!k && (keyOf(ch.mother) === k || keyOf(ch.father) === k); }
+function kidsOf(name) { const s = chatState(); return s ? s.children.filter(ch => isParent(ch, name)) : []; }
+// a newborn that nobody else looks after: its parents do not sleep
+function babyNights(name) {
+    if (!on() || !settings.birth || !settings.babyNights) return false;
+    return kidsOf(name).some(ch => !ch.care && ageStage(ageDays(ch, chatState())) === 'new');
+}
+function sexWord(sex, form) { return t((sex === 'm' ? 'boy' : 'girl') + (form || '')); }
+
+// her term came: the clipping, once (afterwards it waits in her tab)
+function checkTerm() {
+    if (!on() || !settings.birth) return;
+    const s = chatState(); if (!s) return;
+    if (s.birth) {
+        if (s.birth.stage === 'later' && s.turn >= s.birth.remind) { s.birth.remind = s.turn + 3; showBirth(); }
+        return;
+    }
+    for (const c of Object.values(s.chars)) {
+        if (!c.preg) continue;
+        const ci = cycleInfo(c.name);
+        if (ci && ci.preg && ci.term) { startLabor({ key: keyOf(c.name), mother: c.name, father: c.preg.father || userName(), player: false, weeks: ci.weeks }); return; }
+    }
+}
+function startLabor(o) {
+    const s = chatState(); if (!s) return false;
+    s.birth = {
+        key: o.key, mother: String(o.mother || ''), father: String(o.father || ''), player: !!o.player,
+        weeks: Number.isFinite(+o.weeks) ? +o.weeks : 40,
+        sex: d100() <= 51 ? 'm' : 'f',          // a few more boys than girls, as everywhere
+        stage: 'due', at: s.turn, remind: 0, name: '', care: ''
+    };
+    saveChat(); updateInjection(); refresh();
+    showBirth();
+    return true;
+}
+function chooseBirth(how, name, care) {
+    const s = chatState(); const b = s && s.birth; if (!b) return;
+    b.name = String(name || '').trim().slice(0, 40);
+    b.care = String(care || '').trim().slice(0, 60);
+    if (how === 'now') { b.stage = 'playing'; b.at = s.turn; toastr.info(t('np_playing')); }
+    else if (how === 'later') { b.stage = 'later'; b.remind = s.turn + 3; }
+    else { deliver({ played: false }); return; }
+    saveChat(); updateInjection(); refresh();
+}
+// the child is here
+function deliver(o) {
+    const s = chatState(); const b = s && s.birth; if (!b) return null;
+    const mt = b.player ? null : npcTraits(b.mother);
+    const ft = keyOf(b.father) === keyOf(userName()) ? null : npcTraits(b.father);
+    const inh = inherit(mt, ft);
+    const ch = {
+        id: genId(), name: b.name, sex: b.sex, born: s.day, ageD: 0, ageDay: s.day,
+        mother: b.mother, father: b.father, motherPlayer: !!b.player, fatherPlayer: !b.player && keyOf(b.father) === keyOf(userName()),
+        care: b.care, traits: inh.traits, from: inh.from, rolls: inh.rolls, desc: '', card: ''
+    };
+    s.children.push(ch);
+    s.birth = null;
+    if (!b.player) {
+        const c = charOf(b.mother, false);
+        if (c && c.preg) endPregnancy(c);
+        if (c) logIt(c, t('born_log', { name: ch.name || t('no_name') }));
+    } else {
+        // RPG Vitals ends the player's own pregnancy on this
+        try { window.dispatchEvent(new CustomEvent('rpg:birth', { detail: { player: true, chatId: getContext().chatId, child: { name: ch.name, sex: ch.sex } } })); } catch (e) { /* no Vitals */ }
+    }
+    if (!o || !o.played) s.fact = { text: t('fact_skip', { who: b.mother, sex: sexWord(ch.sex, '_acc'), named: ch.name ? t('named', { name: ch.name }) : '' }), until: s.turn + 3 };
+    toastr.success(t('born_toast', { name: ch.name || t('no_name'), sex: sexWord(ch.sex) }));
+    saveChat(); updateInjection(); refresh();
+    if (settings.childDesc) describeChild(ch.id, true);
+    return ch;
+}
+function npcTraits(name) {
+    if (!name) return null;
+    try { const n = TBE.npcFor(name); return n && n.traits ? n.traits : null; } catch (e) { return null; }
+}
+// each trait: a die — 1–45 the mother's, 46–90 the father's, 91–100 its own; a parent with no page gives way to the other
+function inherit(mt, ft) {
+    let keys = [];
+    try { keys = TBE.traitKeys(); } catch (e) { keys = []; }
+    const traits = {}, from = {}, rolls = {};
+    keys.forEach(k => {
+        const r = d100(); rolls[k] = r;
+        let src = r <= 45 ? 'm' : r <= 90 ? 'f' : 'n';
+        if (src === 'm' && !mt) src = ft ? 'f' : 'n';
+        else if (src === 'f' && !ft) src = mt ? 'm' : 'n';
+        const base = src === 'm' ? +mt[k] : src === 'f' ? +ft[k] : 15 + Math.floor(Math.random() * 71);
+        traits[k] = clamp(Math.round((Number.isFinite(base) ? base : 50) + (src === 'n' ? 0 : Math.random() * 20 - 10)), 0, 100);
+        from[k] = src;
+    });
+    return { traits, from, rolls };
+}
+// the traits worth saying (far from the middle), each with where it came from
+function kidTraits(ch, limit = 4) {
+    const keys = Object.keys(ch.traits || {});
+    return keys.map(k => ({ k, v: ch.traits[k], dist: Math.abs(ch.traits[k] - 50) }))
+        .filter(x => x.dist >= 15).sort((a, b) => b.dist - a.dist).slice(0, limit)
+        .map(x => {
+            let w = '';
+            try { w = (TBE.traitWords(Object.fromEntries(keys.map(y => [y, y === x.k ? x.v : 50])), ch.sex === 'm' ? 'm' : 'f', 1) || [])[0] || ''; } catch (e) { w = ''; }
+            return { k: x.k, word: w || x.k, from: (ch.from || {})[x.k] || 'n', roll: (ch.rolls || {})[x.k] };
+        });
+}
+function cardText(name) {
+    try {
+        if (keyOf(name) === keyOf(userName())) return String((getContext().powerUserSettings || {}).persona_description || '').slice(0, 700);
+        const ch = characters.find(c => c && c.name === name);
+        return ch ? String(ch.description || '').slice(0, 700) : '';
+    } catch (e) { return ''; }
+}
+// the newborn's note — the one model call here; shown to her before it was added
+const busyKids = new Set();
+async function describeChild(id, quiet) {
+    const s = chatState(); const ch = s && s.children.find(x => x.id === id); if (!ch || busyKids.has(id)) return;
+    let hasKey = false;
+    try { hasKey = SB.hasKey(); } catch (e) { hasKey = false; }
+    if (!hasKey) { if (!quiet) toastr.warning(t('kid_no_key')); return; }
+    const chatId = getContext().chatId;
+    busyKids.add(id); refresh();
+    try {
+        const sys = 'You write short notes about characters for a roleplay. Plain prose only: no lists, no headings, no quotation marks around the whole text.';
+        const user = `A child has just been born in the story. Write a note of 3-4 lines about this child: what the baby looks like now and whose features show (from the parents' descriptions below), and the temperament the child will likely grow into (from the traits given). Do not invent events, names or places that are not given here.
+
+Child: ${ch.name || 'not named yet'}, a ${ch.sex === 'm' ? 'boy' : 'girl'}.
+Temperament (rolled from the parents): ${kidTraits(ch, 5).map(x => x.word).join(', ') || 'nothing marked yet'}.
+Mother: ${ch.mother}. ${cardText(ch.mother)}
+Father: ${ch.father || 'unknown'}. ${ch.father ? cardText(ch.father) : ''}
+
+${lang() === 'ru' ? 'Write in Russian.' : 'Write in English.'}`;
+        const text = await SB.aiText(sys, user, 400);
+        if (getContext().chatId !== chatId) return;           // the chat changed meanwhile: not this one's child
+        if (text) { ch.desc = text; saveChat(); }
+    } catch (e) {
+        toastr.warning(t('kid_desc_fail', { e: String(e && e.message || e) }));
+    } finally { busyKids.delete(id); refresh(); }
+}
+// a Tavern card for the child (only when asked): the note, the parents, the age
+async function createCard(id) {
+    const s = chatState(); const ch = s && s.children.find(x => x.id === id); if (!ch) return;
+    if (!ch.name) { toastr.info(t('kid_card_need_name')); return; }
+    try {
+        const ctx = getContext();
+        const fd = new FormData();
+        fd.append('ch_name', ch.name);
+        fd.append('description', [ch.desc, t('card_parents', { m: ch.mother, f: ch.father || '—' }), t('card_age', { a: `${t('age_' + ageStage(ageDays(ch, chatState())))}, ${ageText(ageDays(ch, chatState()))}` })].filter(Boolean).join('\n\n'));
+        fd.append('personality', kidTraits(ch, 5).map(x => x.word).join(', '));
+        fd.append('first_mes', '');
+        fd.append('creator_notes', t('card_note'));
+        const h = Object.assign({}, ctx.getRequestHeaders()); delete h['Content-Type'];
+        const resp = await fetch('/api/characters/create', { method: 'POST', headers: h, body: fd });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        ch.card = (await resp.text()).trim();
+        // the body it was born with, kept for the new card
+        settings.traits[keyOf(ch.name)] = Object.assign(rollTraits(ch.name), { sex: ch.sex, cycle: ch.sex === 'f' });
+        saveSettings(); saveChat();
+        try { if (typeof ctx.getCharacters === 'function') await ctx.getCharacters(); } catch (e) { /* the list refreshes on its own later */ }
+        toastr.success(t('kid_card_ok', { name: ch.name }));
+    } catch (e) { console.warn('[Character] card', e); toastr.error(t('kid_card_fail')); }
+    refresh();
+}
+// who looks after the baby: '' is the parents themselves
+function careOptions(cur, parents) {
+    const seen = new Set(parents.map(keyOf));
+    const names = cast().filter(n => !seen.has(keyOf(n)) && keyOf(n) !== keyOf(userName()));
+    if (cur && !names.some(n => keyOf(n) === keyOf(cur))) names.unshift(cur);
+    return `<option value="">${esc(t('care_parents'))}</option>${names.map(n => `<option value="${esc(n)}"${keyOf(n) === keyOf(cur) ? ' selected' : ''}>${esc(n)}</option>`).join('')}<option value="__other">${esc(t('care_other'))}</option>`;
+}
+function laborDirective(b) {
+    const named = b.name ? t('named', { name: b.name }) : '';
+    return `[${t(b.player ? 'labor_p' : 'labor', { who: b.mother, sex: sexWord(b.sex, '_acc'), sexn: sexWord(b.sex), named })}]`;
+}
+function childLines() {
+    const s = chatState(); if (!s || !settings.birth) return [];
+    const here = new Set(presentNames().map(keyOf)); here.add(keyOf(userName()));
+    return s.children.filter(ch => ageDays(ch, s) < 365 && (here.has(keyOf(ch.mother)) || here.has(keyOf(ch.father)))).map(ch => {
+        const parents = [ch.mother, ch.father].filter(Boolean).join(' & ');
+        const care = ch.care ? t('care_inj', { who: ch.care }) : t('care_inj_parents');
+        return `${t('inj_kid', { name: ch.name || t('no_name'), age: ageText(ageDays(ch, chatState())), parents })}; ${care}.`;
+    });
+}
+
+/* the clipping itself */
+function sceneNow() {
+    try { const sc = window.RPG && window.RPG.scene && window.RPG.scene.available && window.RPG.scene.get ? window.RPG.scene.get() : null; return sc || null; } catch (e) { return null; }
+}
+function birthHtml(b) {
+    const s = chatState(), sc = sceneNow();
+    const when = sc && (sc.date || sc.time) ? [sc.date, sc.time || sc.timeLabel].filter(Boolean).join(' · ') : `${t('day_n', { n: s.day })}${s.part ? ' · ' + partWord(s.part) : ''}`;
+    const where = sc && (sc.location || sc.place) ? String(sc.location || sc.place) : `№ ${s.day}`;
+    const parents = [b.mother, b.father];
+    return `<div class="rbd-np-wrap">
+        <div class="rbd-np-shadow" aria-hidden="true"></div>
+        <div class="rbd-np-drop">
+            <div class="rbd-np-tape" aria-hidden="true"></div>
+            <article class="rbd-np rbd-paper rbd-torn">
+                <button type="button" class="rbd-np-x" aria-label="${esc(t('np_close'))}" title="${esc(t('np_close'))}">✕</button>
+                <header class="rbd-np-head">
+                    <div class="rbd-np-mast"><span></span><span class="rbd-np-title">${esc(t('np_paper'))}</span><span></span></div>
+                    <div class="rbd-np-line"><span>${esc(t('np_extra'))}</span><span>${esc(when)}</span><span>${esc(where)}</span></div>
+                </header>
+                <h2 class="rbd-np-h" id="rbd-np-h">${esc(t('np_head', { who: b.mother }))}</h2>
+                <p class="rbd-np-lede">${esc(b.father ? t('np_lede', { w: b.weeks, f: b.father }) : t('np_lede_nf', { w: b.weeks }))}</p>
+                <div class="rbd-np-form">
+                    <label class="rbd-np-f"><span>${esc(t('np_name'))} · ${b.sex === 'm' ? '👦' : '👧'} ${esc(sexWord(b.sex))}</span>
+                        <input type="text" class="rbd-np-name" maxlength="40" placeholder="${esc(t('np_name_ph'))}" value="${esc(b.name)}"></label>
+                    <label class="rbd-np-f"><span>${esc(t('np_care'))}</span>
+                        <select class="rbd-np-care">${careOptions(b.care, parents)}</select>
+                        <input type="text" class="rbd-np-care-other" maxlength="60" placeholder="${esc(t('care_ph'))}" hidden></label>
+                </div>
+                <div class="rbd-np-div"><span></span><span>${esc(t('np_how'))}</span><span></span></div>
+                <div class="rbd-np-opts">
+                    <button type="button" class="rbd-np-opt" data-how="now"><span class="rbd-np-n">1.</span><span><b>${esc(t('np_now'))}</b><i>${esc(t('np_now_d'))}</i></span></button>
+                    <button type="button" class="rbd-np-opt" data-how="later"><span class="rbd-np-n">2.</span><span><b>${esc(t('np_later'))}</b><i>${esc(t('np_later_d'))}</i></span></button>
+                    <button type="button" class="rbd-np-opt" data-how="skip"><span class="rbd-np-n">3.</span><span><b>${esc(t('np_skip'))}</b><i>${esc(t('np_skip_d'))}</i></span></button>
+                </div>
+                <p class="rbd-np-foot">${esc(t('np_foot'))}</p>
+                <div class="rbd-np-stamp" aria-hidden="true">${esc(t('np_stamp'))}</div>
+            </article>
+        </div>
+    </div>`;
+}
+function closeBirth() { document.querySelectorAll('.rbd-birth-ov').forEach(el => el.remove()); }
+function showBirth() {
+    const s = chatState(); const b = s && s.birth;
+    if (!on() || !settings.birth || !b || b.stage === 'playing' || document.querySelector('.rbd-birth-ov')) return;
+    const chatId = getContext().chatId;
+    const ov = document.createElement('div');
+    ov.className = 'rbd-birth-ov';
+    ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-labelledby', 'rbd-np-h');
+    ov.innerHTML = birthHtml(b);
+    document.body.appendChild(ov);
+    const name = ov.querySelector('.rbd-np-name'), care = ov.querySelector('.rbd-np-care'), other = ov.querySelector('.rbd-np-care-other');
+    care.addEventListener('change', () => { other.hidden = care.value !== '__other'; if (!other.hidden) other.focus(); });
+    const careVal = () => care.value === '__other' ? other.value : care.value;
+    const pickIt = how => {
+        const left = getContext().chatId !== chatId;   // the chat changed under it: it is not this chat's birth
+        closeBirth();
+        if (!left) chooseBirth(how, name.value, careVal());
+    };
+    ov.querySelectorAll('.rbd-np-opt').forEach(btn => btn.addEventListener('click', () => pickIt(btn.dataset.how)));
+    ov.querySelector('.rbd-np-x').addEventListener('click', () => pickIt('later'));
+    ov.addEventListener('click', e => { if (e.target === ov) pickIt('later'); });
+    ov.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { e.preventDefault(); pickIt('later'); }
+        if (e.key === 'Tab') {                     // the focus stays inside the clipping
+            const f = [...ov.querySelectorAll('button, input:not([hidden]), select')];
+            const i = f.indexOf(document.activeElement);
+            if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
+            else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+        }
+    });
+    setTimeout(() => { try { name.focus({ preventScroll: true }); } catch (e) { /* gone */ } }, 60);
+}
+// a new chat: the old clipping goes; this chat's unanswered one comes back
+function onChat() {
+    closeBirth();
+    updateInjection(); refresh();
+    if (!on()) return;
+    const s = chatState();
+    if (s && s.birth && s.birth.stage === 'due') setTimeout(showBirth, 400);
+}
+
+/* ---------------- a world card is not a body ---------------- */
+function isWorldName(name) {
+    const n = String(name || '').trim();
+    const main = n.split(/\s[-–—:|]\s|[(\[]/)[0].trim();
+    if (/&/.test(main)) return true;
+    if (/\b(academy|school|manor|atelier|service|guild|kingdom|empire|world|city|town|village|tavern|inn|hotel|rpg|simulator|adventure|story)\b/i.test(main)) return true;
+    if (/(?<![\p{L}])(академи[яи]|школ[аы]|гильди[яи]|королевств[оа]|импери[яи]|мир|город|деревн[яи]|таверн[аы]|приключени[ея]|симулятор)(?![\p{L}])/iu.test(main)) return true;
+    return main.split(/\s+/).length >= 4;
+}
+// who the tab can show for this block: the character, or — on a world card — the people inside it
+function cast() {
+    const out = new Set();
+    try { Object.values((TBE.state() || {}).npcs || {}).forEach(n => { if (n && n.name && !isWorldName(n.name)) out.add(n.name); }); } catch (e) { /* no Bonds */ }
+    const s = chatState();
+    if (s) Object.values(s.chars).forEach(c => { if (c && c.name && !isWorldName(c.name)) out.add(c.name); });
+    presentNames().forEach(n => { if (!isWorldName(n)) out.add(n); });
+    return [...out];
+}
+
+/* ---------------- the pane ---------------- */
+const pick = {};   // block -> whose body it shows (a world card)
+const moreOpen = new Set();   // whose body settings are open — they stay open while you change them
+function meter(icon, label, val, cls) {
+    const v = clamp(Math.round(val), 0, 100);
+    const band = v < 25 ? 'low' : v < 55 ? 'mid' : 'high';
+    return `<div class="rbd-need ${cls} ${band}"><span class="rbd-need-i" aria-hidden="true">${icon}</span><span class="rbd-need-l">${esc(label)}</span><span class="rbd-need-bar"><span style="width:${v}%"></span></span><span class="rbd-need-v">${v}</span></div>`;
+}
+// the clipping folded into a strip, in the mother's tab (or the father's, when the mother is the player)
+function birthStrip(name) {
+    const s = chatState(); const b = s && s.birth;
+    if (!settings.birth || !b || !(keyOf(name) === b.key || (b.player && keyOf(name) === keyOf(b.father)))) return '';
+    if (b.stage === 'playing') return `<div class="rbd-quiet rbd-playing">👶 ${esc(t('np_playing'))}</div>`;
+    return `<button type="button" class="rbd-strip rbd-paper rbd-torn-strip" aria-label="${esc(t('np_open'))}"><span class="rbd-strip-stamp">${esc(t('np_stamp'))}</span><span class="rbd-strip-t">${esc(t('np_head', { who: b.mother }))}</span><span class="rbd-strip-chev" aria-hidden="true">▾</span></button>`;
+}
+function kidsHtml(name) {
+    if (!settings.birth) return '';
+    const list = kidsOf(name);
+    if (!list.length) return '';
+    const FROM = { m: '♀', f: '♂', n: '✦' };
+    return `<div class="rbd-sect">👶 ${esc(t('children'))}</div><div class="rbd-kids">${list.map(ch => {
+        const parents = [ch.mother, ch.father];
+        const traits = kidTraits(ch);
+        const busy = busyKids.has(ch.id);
+        return `<div class="rbd-kid" data-kid="${esc(ch.id)}">
+            <div class="rbd-kid-top"><span class="rbd-kid-sex" aria-hidden="true">${ch.sex === 'm' ? '👦' : '👧'}</span>
+                <b class="rbd-kid-name">${esc(ch.name || t('no_name'))}</b>
+                <button type="button" class="rbd-kid-btn rbd-kid-ren" title="${esc(t('rename'))}" aria-label="${esc(t('rename'))}">✎</button>
+                <span class="rbd-kid-age">${esc(t('age_' + ageStage(ageDays(ch, chatState()))))} · ${esc(ageText(ageDays(ch, chatState())))}</span></div>
+            <div class="rbd-kid-par">${esc(sexWord(ch.sex))} · ${esc(parents.filter(Boolean).join(' & '))}</div>
+            <label class="rbd-kid-care">${esc(t('care'))} <select class="rbd-kid-carep">${careOptions(ch.care, parents)}</select><input type="text" class="rbd-kid-care-other text_pole" maxlength="60" placeholder="${esc(t('care_ph'))}" hidden></label>
+            ${traits.length ? `<div class="rbd-kid-traits">${traits.map(x => `<span class="rbd-kid-tr from-${x.from}" title="🎲 ${esc(String(x.roll ?? '—'))} — ${esc(t('from_' + x.from))}"><i aria-hidden="true">${FROM[x.from]}</i> ${esc(x.word)}</span>`).join('')}</div>` : ''}
+            ${busy ? `<div class="rbd-kid-desc busy">${esc(t('kid_busy'))}</div>` : ch.desc ? `<div class="rbd-kid-desc">${esc(ch.desc)}</div>` : ''}
+            <div class="rpg-tools rbd-kid-tools">
+                <button type="button" class="rpg-tool rbd-kid-d"${busy ? ' disabled' : ''}>✍ ${esc(ch.desc ? t('kid_redesc') : t('kid_desc'))}</button>
+                <button type="button" class="rpg-tool rbd-kid-c"${ch.card ? ' disabled' : ''}>🃏 ${esc(ch.card ? t('kid_card_done') : t('kid_card'))}</button>
+                <button type="button" class="rpg-tool rbd-kid-x">✕ ${esc(t('kid_del'))}</button>
+            </div>
+        </div>`;
+    }).join('')}</div>`;
+}
+// in the character's body settings: which needs this one has, and needs of their own
+function needsEditHtml(name) {
+    const nd = needsOf(name);
+    const box = (k, icon) => `<label class="rbd-nd-chk"><input type="checkbox" class="rbd-nd" data-nd="${k}"${nd[k] ? ' checked' : ''}> ${icon} ${esc(t(k))}</label>`;
+    const rateSel = (cur, cls) => `<select class="${cls}" aria-label="${esc(t('rate'))}" title="${esc(t('rate'))}">${['slow', 'mid', 'fast'].map(r => `<option value="${r}"${cur === r ? ' selected' : ''}>${esc(t('rate_' + r))}</option>`).join('')}</select>`;
+    return `<fieldset class="rbd-nds"><legend>${esc(t('needs_h'))}</legend>
+        <div class="rbd-nd-row">${box('sat', '🍞')}${box('eng', '🌙')}${box('hyg', '🧼')}</div>
+        ${nd.own.map(o => `<div class="rbd-nd-own" data-own="${esc(o.id)}"><span class="rbd-nd-ic">${esc(o.icon || '✦')}</span><b>${esc(o.name)}</b>${rateSel(o.rate || 'mid', 'rbd-nd-rate')}<button type="button" class="rbd-nd-x" title="${esc(t('need_del'))}" aria-label="${esc(t('need_del'))}">✕</button></div>`).join('')}
+        <div class="rbd-nd-add"><input type="text" class="rbd-nd-icon" maxlength="4" placeholder="${esc(t('need_icon_ph'))}" aria-label="emoji"><input type="text" class="rbd-nd-name" maxlength="24" placeholder="${esc(t('need_name_ph'))}" aria-label="${esc(t('need_add'))}">${rateSel('mid', 'rbd-nd-newrate')}<button type="button" class="rbd-nd-plus" title="${esc(t('need_add'))}" aria-label="${esc(t('need_add'))}">＋</button></div>
+    </fieldset>`;
+}
+function paneHtml(name, blockChar) {
+    const tr = traitsOf(name), c = charOf(name), s = chatState();
+    if (!tr || !c || !s) return `<div class="rpg-bonds-note">${esc(t('nobody'))}</div>`;
+    const world = isWorldName(blockChar);
+    let h = '';
+    if (world) {
+        const list = cast();
+        h += `<div class="rbd-who">${list.map(n => `<span class="rbd-chip${n === name ? ' on' : ''}" data-who="${esc(n)}">${esc(n)}</span>`).join('')}</div>`;
+    }
+    // the dice line: how the body moves her checks right now
+    const mod = dcMod(name);
+    const head = `<div class="rbd-head"><span class="rbd-day">☀ ${esc(t('day_n', { n: s.day }))}${s.part ? ` · ${esc(partWord(s.part))}` : ''}</span>${settings.dice ? `<span class="rbd-mod ${mod > 0 ? 'bad' : mod < 0 ? 'good' : ''}" title="${esc(t('dice_title'))}">🎲 ${esc(t('dice_mod'))} ${mod > 0 ? '+' : ''}${mod}</span>` : ''}</div>`;
+    h += head;
+    if (settings.needs) {
+        const nd = needsOf(name);
+        const ms = (nd.sat ? meter('🍞', t('sat'), c.sat, 'sat') : '') + (nd.eng ? meter('🌙', t('eng'), c.eng, 'eng') : '') + (nd.hyg ? meter('🧼', t('hyg'), c.hyg, 'hyg') : '')
+            + nd.own.map(o => meter(o.icon || '✦', o.name, ownVal(c, o), 'own')).join('');
+        if (ms) h += `<div class="rbd-needs">${ms}</div>`;
+    }
+    // the cycle
+    if (settings.cycle && tr.sex === 'f') {
+        const ci = cycleInfo(name);
+        if (!ci) h += `<div class="rbd-cycle off">🌸 ${esc(t('no_cycle'))}</div>`;
+        else if (ci.preg) {
+            const txt = ci.known ? t('pregnant', { w: ci.weeks }) : ci.late >= 1 ? t('late', { n: ci.late }) : null;
+            if (txt && ci.known) {
+                // the weeks as a bar to term, the trimester, what it feels like, and when
+                const pct = clamp(Math.round(ci.gd / ci.due * 100), 0, 100);
+                h += `<div class="rbd-cycle preg rbd-preg"><span class="rbd-preg-t">🌸 <b>${esc(txt)}</b> · ${esc(t('trim' + ci.trim))}</span>
+                    <span class="rbd-preg-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></span>
+                    <span class="rbd-preg-s">${ci.weeks >= 5 ? esc(t('sym' + ci.trim)) + ' · ' : ''}${esc(ci.term ? t('due_now') : t('due_in', { n: ci.dueIn }))}</span></div>`;
+            } else if (txt) h += `<div class="rbd-cycle preg">🌸 <b>${esc(txt)}</b></div>`;
+            else h += `<div class="rbd-cycle">🌸 <b>${esc(t('ph_luteal'))}</b></div>`;   // nothing to see yet
+        } else {
+            const ring = Math.round(ci.cd / ci.len * 100);
+            h += `<div class="rbd-cycle ph-${ci.phase}"><span class="rbd-ring" style="--p:${ring}"><i>${ci.cd}</i></span><span class="rbd-cyc-t"><b>${esc(t('ph_' + ci.phase))}</b> · ${esc(t('cycle_day', { d: ci.cd, n: ci.len }))}${ci.phase === 'period' ? ` · ${esc(t('pain' + (ci.pain || 0)))}` : ''}</span></div>`;
+        }
+    }
+    // today's states
+    const sb = stateBits(c);
+    if (sb.length) {
+        const ICON = { hangover: '🍺', sleepless: '😵', rush: '⚡', crash: '🫠', baby: '🍼' };
+        h += `<div class="rbd-states">${sb.map(k => `<span class="rbd-state st-${k}">${ICON[k]} ${esc(t('st_' + k))}</span>`).join('')}</div>`;
+    }
+    // ailments
+    if (settings.ailments) {
+        h += `<div class="rbd-sect">${esc(t('ailments'))}</div>`;
+        h += c.ailments.length
+            ? `<div class="rbd-ails">${c.ailments.map(a => `<span class="rbd-ail" data-id="${esc(a.id)}">${a.from === 'dice' ? '🎲' : '🤒'} ${esc(a.name)}${Number.isFinite(a.days) ? ` <i>${esc(t('days', { n: a.days }))}</i>` : ''}<b class="rbd-x" title="${esc(t('remove'))}" role="button" tabindex="0">✕</b></span>`).join('')}</div>`
+            : `<div class="rbd-quiet">${esc(t('none'))}</div>`;
+    }
+    // pockets
+    if (settings.slots) {
+        const cap = slotCap();
+        let cells = '';
+        for (let i = 0; i < cap; i++) {
+            const sl = c.slots[i];
+            cells += sl
+                ? `<button type="button" class="rbd-slot full" data-id="${esc(sl.id)}" title="${esc(sl.name + (sl.desc ? ' — ' + sl.desc : ''))}"><span>${esc(sl.name)}</span></button>`
+                : `<button type="button" class="rbd-slot" data-empty="1" title="${esc(t('give_me'))}"><span>＋</span></button>`;
+        }
+        h += `<div class="rbd-sect">${esc(t('pockets'))}</div><div class="rbd-slots">${cells}</div><div class="rbd-pop" hidden></div>`;
+    }
+    h += birthStrip(name) + kidsHtml(name);
+    // the fixed traits, behind a fold
+    const opt = (v, cur, lbl) => `<option value="${v}"${String(cur) === String(v) ? ' selected' : ''}>${esc(lbl)}</option>`;
+    const ci2 = cycleInfo(name);
+    h += `<details class="rbd-more"${moreOpen.has(keyOf(name)) ? ' open' : ''}><summary>⚙ ${esc(t('more'))}</summary>
+        <label>${esc(t('sex'))} <select class="rbd-f" data-f="sex">${opt('f', tr.sex, t('sex_f'))}${opt('m', tr.sex, t('sex_m'))}${opt('x', tr.sex, t('sex_x'))}</select></label>
+        ${tr.sex === 'f' ? `
+        <label><input type="checkbox" class="rbd-f" data-f="cycle"${tr.cycle ? ' checked' : ''}> ${esc(t('has_cycle'))}</label>
+        <label><input type="checkbox" class="rbd-f" data-f="fertile"${tr.fertile ? ' checked' : ''}> ${esc(t('fertile'))} <i>(${esc(t('fert_roll', { r: tr.rolls ? tr.rolls.fert : '—' }))})</i></label>
+        <label>${esc(t('len'))} <input type="number" class="rbd-f" data-f="len" min="21" max="40" value="${tr.len}"></label>
+        <label>${esc(t('period_len'))} <input type="number" class="rbd-f" data-f="period" min="2" max="9" value="${tr.period}"></label>
+        <label>${esc(t('pain'))} <select class="rbd-f" data-f="pain">${[0, 1, 2, 3].map(p => opt(p, tr.pain, t('pain' + p))).join('')}</select></label>
+        <label><input type="checkbox" class="rbd-f" data-f="pill"${tr.pill ? ' checked' : ''}> ${esc(t('pill'))}</label>
+        ${c.preg ? `<button type="button" class="rbd-reroll rbd-pregend">${esc(t('preg_end'))}</button>` : ''}
+        ${ci2 && !ci2.preg ? `<label>${esc(t('set_day'))} <input type="number" class="rbd-f" data-f="day" min="1" max="${ci2.len}" value="${ci2.cd}"></label>` : ''}` : ''}
+        ${settings.needs ? needsEditHtml(name) : ''}
+        <button type="button" class="rbd-reroll">🎲 ${esc(t('reroll'))}</button>
+        ${c.log.length ? `<div class="rbd-log">${c.log.slice(-4).map(l => `<div>${esc(l.text)}</div>`).join('')}</div>` : ''}
+    </details>`;
+    return `<div class="rbd" data-who="${esc(name)}">${h}</div>`;
+}
+function partWord(p) {
+    const W = { en: { morning: 'morning', day: 'day', evening: 'evening', night: 'night' }, ru: { morning: 'утро', day: 'день', evening: 'вечер', night: 'ночь' } };
+    return (W[lang()] || W.en)[p] || p;
+}
+function bindPane(pane, name, container) {
+    const repaint = () => { saveChat(); updateInjection(); refresh(); };
+    pane.querySelectorAll('.rbd-chip').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); pick[container.getAttribute('data-mesid')] = el.getAttribute('data-who'); paint(container, true); }));
+    pane.querySelectorAll('.rbd-ail .rbd-x').forEach(el => el.addEventListener('click', e => {
+        e.stopPropagation();
+        const c = charOf(name); const id = el.closest('.rbd-ail').getAttribute('data-id');
+        c.ailments = c.ailments.filter(a => a.id !== id); repaint();
+    }));
+    const pop = pane.querySelector('.rbd-pop');
+    const showPop = (html, anchor) => { if (!pop) return; pop.innerHTML = html; pop.hidden = false; pop.style.setProperty('--x', `${anchor.offsetLeft}px`); };
+    pane.querySelectorAll('.rbd-slot').forEach(el => el.addEventListener('click', e => {
+        e.stopPropagation();
+        if (pop && !pop.hidden && pop.dataset.for === (el.dataset.id || 'new')) { pop.hidden = true; return; }
+        if (pop) pop.dataset.for = el.dataset.id || 'new';
+        if (el.dataset.empty) {
+            const v = inv();
+            if (!v) return showPop(`<div class="rbd-pop-note">${esc(t('no_backpack'))}</div>`, el);
+            const items = v.list() || [];
+            if (!items.length) return showPop(`<div class="rbd-pop-note">${esc(t('backpack_empty'))}</div>`, el);
+            showPop(`<div class="rbd-pop-h">${esc(t('give_me'))}</div>` + items.slice(0, 30).map(i => `<button type="button" class="rbd-pop-i" data-item="${esc(i.id)}">${esc(i.name)}</button>`).join(''), el);
+            pop.querySelectorAll('.rbd-pop-i').forEach(b => b.addEventListener('click', ev => {
+                ev.stopPropagation();
+                // a full pocket is said before anything leaves the backpack, so nothing is lost
+                if (charOf(name).slots.length >= slotCap()) { toastr.info(t('full', { name })); return; }
+                const it = v.remove(b.getAttribute('data-item'));
+                if (it) takeFromPlayer(name, it);
+            }));
+        } else {
+            showPop(`<button type="button" class="rbd-pop-i" data-a="back">↩ ${esc(t('take_back'))}</button><button type="button" class="rbd-pop-i" data-a="drop">✕ ${esc(t('drop'))}</button>`, el);
+            pop.querySelectorAll('.rbd-pop-i').forEach(b => b.addEventListener('click', ev => {
+                ev.stopPropagation();
+                if (b.dataset.a === 'back') giveToPlayer(name, el.dataset.id);
+                else { const c = charOf(name); c.slots = c.slots.filter(sl => sl.id !== el.dataset.id); repaint(); }
+            }));
+        }
+    }));
+    pane.querySelectorAll('.rbd-f').forEach(el => el.addEventListener('change', e => {
+        e.stopPropagation();
+        const tr = traitsOf(name), f = el.dataset.f;
+        if (f === 'cycle' || f === 'fertile' || f === 'pill') tr[f] = el.checked;
+        else if (f === 'sex') { tr.sex = el.value; tr.cycle = el.value === 'f' ? tr.cycle !== false : false; }
+        else if (f === 'len') tr.len = clamp(parseInt(el.value, 10) || 28, 21, 40);
+        else if (f === 'period') tr.period = clamp(parseInt(el.value, 10) || 5, 2, 9);
+        else if (f === 'pain') tr.pain = clamp(parseInt(el.value, 10) || 0, 0, 3);
+        else if (f === 'day') { const c = charOf(name), s = chatState(); c.cycleStart = s.day - (clamp(parseInt(el.value, 10) || 1, 1, 40) - 1); saveChat(); }
+        saveSettings(); repaint();
+    }));
+    const more = pane.querySelector('.rbd-more');
+    if (more) more.addEventListener('toggle', () => { if (more.open) moreOpen.add(keyOf(name)); else moreOpen.delete(keyOf(name)); });
+    pane.querySelectorAll('.rbd-more, .rbd-more *').forEach(el => el.addEventListener('click', e => e.stopPropagation()));
+    const pe = pane.querySelector('.rbd-pregend');
+    if (pe) pe.addEventListener('click', e => { e.stopPropagation(); endPregnancy(charOf(name)); repaint(); });
+    const rr = pane.querySelector('.rbd-reroll:not(.rbd-pregend)');
+    if (rr) rr.addEventListener('click', e => { e.stopPropagation(); settings.traits[keyOf(name)] = rollTraits(name); saveSettings(); repaint(); });
+    // the needs this character has
+    pane.querySelectorAll('.rbd-nd').forEach(el => el.addEventListener('change', () => { needsOf(name)[el.dataset.nd] = el.checked; saveSettings(); repaint(); }));
+    pane.querySelectorAll('.rbd-nd-own').forEach(row => {
+        const id = row.dataset.own;
+        row.querySelector('.rbd-nd-rate').addEventListener('change', e => { const o = needsOf(name).own.find(x => x.id === id); if (o) { o.rate = e.target.value; saveSettings(); } });
+        row.querySelector('.rbd-nd-x').addEventListener('click', () => {
+            const nd = needsOf(name); nd.own = nd.own.filter(x => x.id !== id);
+            const c = charOf(name, false); if (c) delete c.own[id];
+            saveSettings(); repaint();
+        });
+    });
+    const plus = pane.querySelector('.rbd-nd-plus');
+    if (plus) {
+        const add = () => {
+            const nm = pane.querySelector('.rbd-nd-name').value.trim().slice(0, 24);
+            if (!nm) { pane.querySelector('.rbd-nd-name').focus(); return; }
+            const nd = needsOf(name);
+            if (nd.own.some(x => keyOf(x.name) === keyOf(nm)) || nd.own.length >= 4) return;
+            nd.own.push({ id: genId(), name: nm, icon: pane.querySelector('.rbd-nd-icon').value.trim().slice(0, 4) || '✦', rate: pane.querySelector('.rbd-nd-newrate').value });
+            saveSettings(); repaint();
+        };
+        plus.addEventListener('click', add);
+        pane.querySelector('.rbd-nd-name').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+    }
+    // the folded clipping opens again
+    const strip = pane.querySelector('.rbd-strip');
+    if (strip) strip.addEventListener('click', e => { e.stopPropagation(); showBirth(); });
+    // the children
+    pane.querySelectorAll('.rbd-kid').forEach(card => {
+        const id = card.dataset.kid;
+        const kid = () => (chatState().children || []).find(x => x.id === id);
+        card.addEventListener('click', e => e.stopPropagation());
+        const ren = card.querySelector('.rbd-kid-ren');
+        ren.addEventListener('click', () => {
+            const b = card.querySelector('.rbd-kid-name');
+            const inp = document.createElement('input');
+            inp.type = 'text'; inp.className = 'text_pole rbd-kid-name-in'; inp.maxLength = 40; inp.value = (kid() || {}).name || '';
+            b.replaceWith(inp); inp.focus();
+            let done = false;
+            const commit = keep => { if (done) return; done = true; const k = kid(); if (k && keep) k.name = inp.value.trim().slice(0, 40); repaint(); };
+            inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') commit(true); if (ev.key === 'Escape') commit(false); });
+            inp.addEventListener('blur', () => commit(true));
+        });
+        const sel = card.querySelector('.rbd-kid-carep'), other = card.querySelector('.rbd-kid-care-other');
+        sel.addEventListener('change', () => {
+            if (sel.value === '__other') { other.hidden = false; other.focus(); return; }
+            const k = kid(); if (k) { k.care = sel.value; repaint(); }
+        });
+        const saveOther = () => { const k = kid(); const v = other.value.trim().slice(0, 60); if (k && v) { k.care = v; repaint(); } };
+        other.addEventListener('keydown', ev => { if (ev.key === 'Enter') saveOther(); });
+        other.addEventListener('change', saveOther);
+        card.querySelector('.rbd-kid-d').addEventListener('click', () => describeChild(id, false));
+        card.querySelector('.rbd-kid-c').addEventListener('click', () => createCard(id));
+        const del = card.querySelector('.rbd-kid-x');
+        // two clicks, no browser dialog: the first asks, the second removes
+        del.addEventListener('click', () => {
+            if (del.dataset.sure !== '1') { del.dataset.sure = '1'; del.textContent = '✕ ' + t('kid_del_sure'); setTimeout(() => { if (del.isConnected) { del.dataset.sure = ''; del.textContent = '✕ ' + t('kid_del'); } }, 3000); return; }
+            const s = chatState(); s.children = s.children.filter(x => x.id !== id); repaint();
+        });
+    });
+}
+// draw the pane of one block — only when it is on screen, like the relationship page
+function paneVisible(container) {
+    const wrap = container.querySelector('.rpg-accordion-wrapper');
+    const pane = container.querySelector('.rpg-pane-body');
+    return !!(wrap && wrap.classList.contains('expanded') && pane && pane.classList.contains('active'));
+}
+function paint(container, force) {
+    const pane = container.querySelector('.rpg-pane-body');
+    if (!pane) return;
+    if (!force && !paneVisible(container)) { pane.setAttribute('data-stale', '1'); return; }
+    const blockChar = container.getAttribute('data-char') || '';
+    let name = blockChar;
+    if (isWorldName(blockChar)) {
+        const list = cast();
+        name = pick[container.getAttribute('data-mesid')] && list.includes(pick[container.getAttribute('data-mesid')]) ? pick[container.getAttribute('data-mesid')] : list[0];
+        if (!name) { pane.innerHTML = `<div class="rpg-bonds-note">${esc(t('nobody'))}</div>`; return; }
+    }
+    pane.removeAttribute('data-stale');
+    pane.innerHTML = paneHtml(name, blockChar);
+    bindPane(pane, name, container);
+}
+function paintIfNeeded(container) {
+    const pane = container.querySelector('.rpg-pane-body');
+    if (!pane || !paneVisible(container)) return;
+    if (pane.getAttribute('data-stale') === '1' || !pane.innerHTML.trim()) paint(container, true);
+}
+let refreshTimer = null;
+function refresh() {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => {
+        document.querySelectorAll('.rpg-inline-container').forEach(c => {
+            const pane = c.querySelector('.rpg-pane-body');
+            if (pane) pane.setAttribute('data-stale', '1');
+            if (paneVisible(c)) paint(c, true);
+        });
+    }, 80);
+}
+
+/* ---------------- settings pane: frames, an emoji each ---------------- */
+function settingsHtml() {
+    const sub = (title, body) => `<div class="rpg-sub"><div class="rpg-subhead">${title}</div>${body}</div>`;
+    const chk = (id, label) => `<label class="checkbox_label"><input type="checkbox" id="${id}"> <span>${esc(label)}</span></label>`;
+    const num = (id, label, attrs) => `<div class="rpg-srow"><label for="${id}">${esc(label)}</label><input type="number" id="${id}" class="text_pole" ${attrs}></div>`;
+    return `
+        <div class="rpg-top">${chk('rbd-enabled', t('s_enable'))}
+            <select id="rbd-lang" class="text_pole" title="${esc(t('s_lang'))}" aria-label="${esc(t('s_lang'))}">
+                <option value="">${esc(t('s_lang_follow'))}</option><option value="en">English</option><option value="ru">Русский</option>
+            </select></div>
+        <div class="rpg-hint">${esc(t('s_hint'))}</div>
+        ${sub(`🍞 ${esc(t('s_needs_h'))}`, `${chk('rbd-needs', t('s_needs'))}<div class="rpg-in">${num('rbd-speed', t('s_speed'), 'min="25" max="300" step="5"')}${num('rbd-partevery', t('s_partEvery'), 'min="2" max="60"')}</div>`)}
+        ${sub(`🌸 ${esc(t('s_cycle_h'))}`, `${chk('rbd-cycle', t('s_cycle'))}<div class="rpg-in">${chk('rbd-preg', t('s_preg'))}<div class="rpg-in">${chk('rbd-hide', t('s_hide'))}</div></div>`)}
+        ${sub(`👶 ${esc(t('s_birth_h'))}`, `${chk('rbd-birth', t('s_birth'))}<div class="rpg-in">
+            <div class="rpg-srow"><label for="rbd-pregspeed">${esc(t('s_pregspeed'))}</label><select id="rbd-pregspeed" class="text_pole"><option value="1">${esc(t('sp1'))}</option><option value="7">${esc(t('sp7'))}</option><option value="30">${esc(t('sp30'))}</option></select></div>
+            ${chk('rbd-childdesc', t('s_childdesc'))}${chk('rbd-babynights', t('s_babynights'))}</div>`)}
+        ${sub(`🤒 ${esc(t('s_ail_h'))}`, `${chk('rbd-ail', t('s_ail'))}<div class="rpg-in">${num('rbd-ailchance', t('s_ailChance'), 'min="0" max="50"')}</div>`)}
+        ${sub(`🎒 ${esc(t('s_slots_h'))}`, `${chk('rbd-slots', t('s_slots'))}<div class="rpg-in">${num('rbd-slotcount', t('s_slotCount'), 'min="1" max="8"')}${chk('rbd-itemsself', t('s_items'))}</div>`)}
+        ${sub(`🍺 ${esc(t('s_nights_h'))}`, `${chk('rbd-nights', t('s_nights'))}${chk('rbd-adren', t('s_adren'))}`)}
+        ${sub(`🎲 ${esc(t('s_dice_h'))}`, chk('rbd-dice', t('s_dice')))}
+        ${sub(`🪄 ${esc(t('s_inj_h'))}`, `${chk('rbd-inject', t('s_inj'))}<div class="rpg-in">${num('rbd-depth', t('s_depth'), 'min="0" max="20"')}</div>`)}`;
+}
+function mountSettings() {
+    const $pane = $('#rpg-tab-pane-body');
+    if (!$pane.length) return;
+    $pane.html(settingsHtml());
+    const after = () => { saveSettings(); updateInjection(); refresh(); if (window.RPGSB_SYNC_ALL) window.RPGSB_SYNC_ALL(); };
+    const bindC = (id, k) => $('#' + id).prop('checked', !!settings[k]).on('change', function () { settings[k] = this.checked; after(); });
+    const bindN = (id, k, lo, hi) => $('#' + id).val(settings[k]).on('change', function () { settings[k] = clamp(parseInt(this.value, 10) || defaultSettings[k], lo, hi); this.value = settings[k]; after(); });
+    $('#rbd-lang').val(settings.language || '').on('change', function () { settings.language = this.value === 'ru' || this.value === 'en' ? this.value : ''; saveSettings(); mountSettings(); updateInjection(); refresh(); });
+    bindC('rbd-enabled', 'enabled'); bindC('rbd-needs', 'needs'); bindC('rbd-cycle', 'cycle'); bindC('rbd-preg', 'pregnancy'); bindC('rbd-hide', 'hidePregnancy');
+    bindC('rbd-ail', 'ailments'); bindC('rbd-slots', 'slots'); bindC('rbd-dice', 'dice'); bindC('rbd-inject', 'inject');
+    bindC('rbd-itemsself', 'itemsSelf'); bindC('rbd-nights', 'nights'); bindC('rbd-adren', 'adrenaline');
+    bindC('rbd-birth', 'birth'); bindC('rbd-childdesc', 'childDesc'); bindC('rbd-babynights', 'babyNights');
+    $('#rbd-pregspeed').val(String(pregSpeed())).on('change', function () {
+        // what has passed stays counted at the old speed; RPG Vitals counts the player's own up to today too
+        syncDays();
+        try { window.dispatchEvent(new CustomEvent('rpg:preg-speed', { detail: { from: pregSpeed() } })); } catch (e) { /* nobody listens */ }
+        settings.pregSpeed = [1, 7, 30].includes(+this.value) ? +this.value : 1; saveChat(); after();
+    });
+    bindN('rbd-speed', 'needsSpeed', 25, 300); bindN('rbd-partevery', 'partEvery', 2, 60); bindN('rbd-ailchance', 'ailmentChance', 0, 50);
+    bindN('rbd-slotcount', 'slotCount', 1, 8); bindN('rbd-depth', 'injectDepth', 0, 20);
+}
+
+/* ---------------- wiring ---------------- */
+function init() {
+    loadSettings();
+    window.addEventListener('rpg:scene-updated', () => setTimeout(onScene, 0));
+    window.addEventListener('rpg:intimacy', e => onIntimacy(e && e.detail));
+}
+
+/* ---------------- the bridge: the RPG Engine's backpack hands things over through it ---------------- */
+window.RPG = window.RPG || {};
+window.RPG.body = {
+    available: true,
+    isEnabled: () => on() && !!settings.slots,
+    cast: () => (on() ? cast() : []),
+    give: (name, item) => (on() && settings.slots && item ? takeFromPlayer(name, item) : false),
+    slots: (name) => { const c = on() ? charOf(name, false) : null; return c ? c.slots.map(s => ({ id: s.id, name: s.name, desc: s.desc })) : []; },
+    takeBack: (name, slotId) => (on() ? giveToPlayer(name, slotId) : false),
+    // a night's condom, used once whoever asks first (RPG Vitals asks for the player's side)
+    useCondom: (detail, name) => (detail ? useCondom(detail, name) : false),
+    dcMod: (name) => dcMod(name),
+    cycle: (name) => { const ci = on() ? cycleInfo(name) : null; return ci ? Object.assign({}, ci) : null; },
+    // birth and children — RPG Vitals reads the speed, and hands over the player's own birth at term
+    pregSpeed: () => pregSpeed(),
+    labor: (o) => {
+        if (!on() || !settings.birth || !o) return false;
+        const s = chatState(); if (!s) return false;
+        if (s.birth) return s.birth.key === PLAYER_KEY;    // already waiting (another birth waits first)
+        return startLabor({ key: PLAYER_KEY, mother: o.mother || userName(), father: o.father || '', player: true, weeks: o.weeks });
+    },
+    // the player's pregnancy ended in the story while the birth was waiting: that was the birth
+    born: () => { const s = on() ? chatState() : null; return s && s.birth && s.birth.key === PLAYER_KEY ? !!deliver({ played: true }) : false; },
+    cancelLabor: () => { const s = on() ? chatState() : null; if (s && s.birth && s.birth.key === PLAYER_KEY) { s.birth = null; closeBirth(); saveChat(); updateInjection(); refresh(); } },
+    laborPending: () => { const s = on() ? chatState() : null; return !!(s && s.birth && s.birth.key === PLAYER_KEY); },
+    babyNights: (name) => babyNights(name),
+    children: () => { const s = on() ? chatState() : null; return s ? s.children.map(ch => ({ id: ch.id, name: ch.name, sex: ch.sex, mother: ch.mother, father: ch.father, age: ageText(ageDays(ch, chatState())), stage: ageStage(ageDays(ch, chatState())), care: ch.care })) : []; }
+};
+
+// one character in and out of a file: the fixed traits, and this chat's state told relative to its day
+function exportChar(name) {
+    const k = keyOf(name);
+    const tr = settings.traits[k];
+    const c = charOf(name, false);
+    if (!tr && !c) return null;
+    const s = chatState();
+    const out = { traits: tr ? JSON.parse(JSON.stringify(tr)) : null };
+    if (c && s) {
+        const ci = cycleInfo(name);
+        out.state = {
+            sat: c.sat, eng: c.eng, hyg: c.hyg, own: Object.assign({}, c.own),
+            ailments: JSON.parse(JSON.stringify(c.ailments)),
+            slots: c.slots.map(sl => ({ name: sl.name, desc: sl.desc, from: sl.from, item: sl.item || null })),
+            cycleDay: ci && !ci.preg ? ci.cd : null,
+            pregDays: c.preg ? gestDays(c.preg, s) : null,
+            pregFather: c.preg ? c.preg.father || null : null
+        };
+    }
+    return out;
+}
+function importChar(name, data) {
+    if (!data || typeof data !== 'object') return false;
+    const k = keyOf(name);
+    if (data.traits && typeof data.traits === 'object') { settings.traits[k] = Object.assign({}, data.traits, { name }); saveSettings(); }
+    const st = data.state;
+    const s = chatState();
+    if (st && s) {
+        const c = charOf(name);
+        ['sat', 'eng', 'hyg'].forEach(f => { if (Number.isFinite(+st[f])) c[f] = clamp(Math.round(+st[f]), 0, 100); });
+        // a file from before: food and water averaged into the one satiety
+        if (Number.isFinite(+st.hyd) && Number.isFinite(+st.sat)) c.sat = clamp(Math.round((+st.sat + +st.hyd) / 2), 0, 100);
+        if (st.own && typeof st.own === 'object') Object.keys(st.own).forEach(id => { if (Number.isFinite(+st.own[id])) c.own[id] = clamp(Math.round(+st.own[id]), 0, 100); });
+        if (Array.isArray(st.ailments)) c.ailments = st.ailments.filter(a => a && a.name).slice(0, 8).map(a => ({ id: genId(), name: String(a.name).slice(0, 40), days: Number.isFinite(+a.days) ? +a.days : 2, from: a.from === 'dice' ? 'dice' : 'story' }));
+        if (Array.isArray(st.slots)) c.slots = st.slots.filter(x => x && x.name).slice(0, slotCap()).map(x => ({ id: genId(), name: String(x.name).slice(0, 60), desc: String(x.desc || '').slice(0, 200), from: x.from || 'own', item: x.item || null }));
+        if (Number.isFinite(+st.cycleDay)) c.cycleStart = s.day - (clamp(+st.cycleDay, 1, 40) - 1);
+        c.preg = st.pregDays !== null && st.pregDays !== undefined && Number.isFinite(+st.pregDays)
+            ? { day: s.day - Math.max(0, +st.pregDays), gd: Math.max(0, +st.pregDays), gdDay: s.day, roll: null, chance: null, father: st.pregFather ? String(st.pregFather).slice(0, 60) : userName() }
+            : null;
+        saveChat();
+    }
+    updateInjection(); refresh();
+    return true;
+}
+
+return {
+    exportChar, importChar,
+    settings: () => settings, init, on, mountSettings, paint, paintIfNeeded, refresh, onReply, onScene,
+    fromStatus, statusAsk, dcMod, updateInjection, isWorldName, t, onChat,
+    hasPane: (charName) => on() && (!isWorldName(charName) || cast().length > 0)
+};
+})();
+
 
 /* ============================================================
    HOST LAYER
@@ -4403,7 +6008,7 @@ return TBE_API;
      3. draws the relationship page into the second tab of the block.
    ============================================================ */
 
-const HOST_TABS = ['status', 'bonds'];
+const HOST_TABS = ['status', 'bonds', 'body'];
 let activeInlineTab = 'status';          // remembered across redraws, per session
 
 function hostLang() {
@@ -4413,8 +6018,8 @@ function hostLang() {
 }
 function hostT(key) {
     const D = {
-        en: { tab_status: 'Status', tab_bonds: 'Relationship', bonds_off: 'The relationship engine is switched off.', bonds_none: 'No relationship page for this character yet.', toggle: 'Show / hide' },
-        ru: { tab_status: 'Статус', tab_bonds: 'Отношения', bonds_off: 'Движок отношений выключен.', bonds_none: 'На этого персонажа страница отношений ещё не заведена.', toggle: 'Показать / скрыть' }
+        en: { tab_status: 'Status', tab_bonds: 'Relationship', tab_body: 'Character', bonds_off: 'The relationship engine is switched off.', bonds_none: 'No relationship page for this character yet.', toggle: 'Show / hide' },
+        ru: { tab_status: 'Статус', tab_bonds: 'Отношения', tab_body: 'Персонаж', bonds_off: 'Движок отношений выключен.', bonds_none: 'На этого персонажа страница отношений ещё не заведена.', toggle: 'Показать / скрыть' }
     };
     return (D[hostLang()] || D.en)[key] || key;
 }
@@ -4425,6 +6030,8 @@ function hostEscape(x) {
 
 function sbOn() { return !!SB.settings().enabled; }
 function bondsOn() { return !!TBE.settings().enabled; }
+function bodyOn() { try { return BODY.on(); } catch (e) { return false; } }
+const bodyTicked = new Set();
 
 /* ------------------------------------------------------------
    THE SHELL
@@ -4467,9 +6074,11 @@ function ensureShell(messageId, charName) {
                     <div class="rpg-tabs">
                         <span class="rpg-tab" data-tab="status"><i class="fa-solid fa-heart-pulse"></i> ${hostEscape(hostT('tab_status'))}</span>
                         <span class="rpg-tab" data-tab="bonds"><i class="fa-solid fa-ribbon"></i> ${hostEscape(hostT('tab_bonds'))}</span>
+                        <span class="rpg-tab" data-tab="body"><i class="fa-solid fa-person"></i> ${hostEscape(hostT('tab_body'))}</span>
                     </div>
                     <div class="rpg-pane rpg-pane-status"></div>
                     <div class="rpg-pane rpg-pane-bonds"></div>
+                    <div class="rpg-pane rpg-pane-body"></div>
                 </div>
             </div>
         </div>`;
@@ -4483,13 +6092,14 @@ function ensureShell(messageId, charName) {
         // the status bars of a folded block are written in now, when it opens
         if (wrapper.classList.contains('expanded') && typeof container.__sbPaint === 'function') container.__sbPaint();
         paintIfNeeded(container);
+        try { BODY.paintIfNeeded(container); } catch (e) { console.error('[Character] paint failed:', e); }
     });
 
     container.querySelectorAll('.rpg-tab').forEach(tab => {
         tab.addEventListener('click', (e) => {
             e.stopPropagation();
             activeInlineTab = tab.getAttribute('data-tab');
-            document.querySelectorAll('.rpg-inline-container').forEach(c => { syncTabs(c); paintIfNeeded(c); });
+            document.querySelectorAll('.rpg-inline-container').forEach(c => { syncTabs(c); paintIfNeeded(c); try { BODY.paintIfNeeded(c); } catch (e) { /* drawn next time */ } });
         });
     });
 
@@ -4505,6 +6115,7 @@ function paneHasContent(container, key) {
     // WITHOUT painting it first — painting every block in the chat just to decide whether
     // a tab should exist is what made long chats crawl.
     if (key === 'bonds') return bondsOn() && !!TBE.npcFor(container.getAttribute('data-char') || '');
+    if (key === 'body') { try { return BODY.hasPane(container.getAttribute('data-char') || ''); } catch (e) { return false; } }
     const pane = container.querySelector('.rpg-pane-status');
     if (!pane) return false;
     if (pane.getAttribute('data-empty') === '1') return false;
@@ -4513,7 +6124,7 @@ function paneHasContent(container, key) {
 }
 
 function syncTabs(container) {
-    const avail = HOST_TABS.filter(k => (k === 'status' ? sbOn() : bondsOn()) && paneHasContent(container, k));
+    const avail = HOST_TABS.filter(k => (k === 'status' ? sbOn() : k === 'bonds' ? bondsOn() : bodyOn()) && paneHasContent(container, k));
     // Nothing to say yet — an empty frame under a message is worse than no frame.
     container.style.display = avail.length ? '' : 'none';
     if (!avail.length) return;
@@ -4526,7 +6137,7 @@ function syncTabs(container) {
     const bar = container.querySelector('.rpg-tabs');
     if (bar) bar.style.display = avail.length > 1 ? '' : 'none';
     container.querySelectorAll('.rpg-pane').forEach(p => {
-        const k = p.classList.contains('rpg-pane-status') ? 'status' : 'bonds';
+        const k = p.classList.contains('rpg-pane-status') ? 'status' : p.classList.contains('rpg-pane-body') ? 'body' : 'bonds';
         p.classList.toggle('active', k === active);
     });
 }
@@ -4642,6 +6253,8 @@ window.RPGSB_BONDS_REFRESH = function () {
 // The Status Bar asks the host for its container instead of building one.
 window.RPGSB_SHELL = ensureShell;
 window.RPGSB_SYNC = syncTabs;
+// the Character tab switched on or off: the tab rows follow, and blocks appear where there were none
+window.RPGSB_SYNC_ALL = function () { document.querySelectorAll('.rpg-inline-container').forEach(c => { syncTabs(c); try { BODY.paintIfNeeded(c); } catch (e) { /* later */ } }); scheduleMount(); };
 
 /* ------------------------------------------------------------
    MOUNTING
@@ -4651,7 +6264,7 @@ window.RPGSB_SYNC = syncTabs;
    messages of the current chat.
    ------------------------------------------------------------ */
 function mountAll() {
-    if (!sbOn() && !bondsOn()) return;
+    if (!sbOn() && !bondsOn() && !bodyOn()) return;
     const chat = getContext().chat;
     if (!chat || !chat.length) return;
     document.querySelectorAll('#chat .mes[mesid]').forEach(el => {
@@ -4681,9 +6294,11 @@ function settingsDrawerHtml() {
             <div class="rpg-settings-tabs">
                 <div class="rpg-settings-tab active" data-tab="status"><i class="fa-solid fa-heart-pulse"></i> ${hostEscape(hostT('tab_status'))}</div>
                 <div class="rpg-settings-tab" data-tab="bonds"><i class="fa-solid fa-ribbon"></i> ${hostEscape(hostT('tab_bonds'))}</div>
+                <div class="rpg-settings-tab" data-tab="body"><i class="fa-solid fa-person"></i> ${hostEscape(hostT('tab_body'))}</div>
             </div>
             <div id="rpg-tab-pane-status" class="rpg-settings-pane active"></div>
             <div id="rpg-tab-pane-bonds" class="rpg-settings-pane"></div>
+            <div id="rpg-tab-pane-body" class="rpg-settings-pane"></div>
         </div>
     </div>
 </div>`;
@@ -4709,6 +6324,7 @@ function mountDrawer() {
 
     SB.mountSettings();
     TBE.setupUI();
+    try { BODY.mountSettings(); } catch (e) { console.error('[Character] settings failed:', e); }
 }
 
 /* ============================================================
@@ -4730,7 +6346,9 @@ jQuery(() => {
         TBE.freshState();
     } catch (e) { console.error('[Bonds] settings load failed:', e); }
 
-    // one drawer, two tabs — fills both panes
+    try { BODY.init(); } catch (e) { console.error('[Character] settings load failed:', e); }
+
+    // one drawer, three tabs — fills every pane
     try { mountDrawer(); } catch (e) { console.error('[RPG Suite] settings panel failed:', e); }
 
     try {
@@ -4755,6 +6373,8 @@ jQuery(() => {
                 scheduleMount();
             }, 100);
         } catch (e) { console.error('[Bonds] chat switch failed:', e); }
+
+        setTimeout(() => { try { BODY.onChat(); } catch (e) { console.warn('[Character] chat switch', e); } }, 150);
 
         // Status Bar
         try {
@@ -4806,6 +6426,9 @@ jQuery(() => {
         // Bonds first: it is what registers whoever just spoke, so the relationship
         // tab has a page to draw by the time the block is mounted.
         try { TBE.onCharacterReply(); } catch (e) { console.error('[Bonds] reply failed:', e); }
+        // the Character tab's clock: one more reply (the Scene Card's own clock, when there, moves it instead)
+        // (once per message: a swipe or a regeneration fires this again for the same one)
+        try { const m0 = getContext().chat[messageId]; const k0 = `${getContext().chatId}#${messageId}`; if (m0 && !m0.is_user && !m0.is_system && !bodyTicked.has(k0)) { bodyTicked.add(k0); BODY.onReply(m0.name); } } catch (e) { console.error('[Character] reply failed:', e); }
         // Opt-in, and always after the bookkeeping above: it reads the prose that
         // was just generated rather than deciding anything about it.
         TBE.readCharProse(messageId).catch(e => console.error('[Bonds] prose read failed:', e));
