@@ -76,6 +76,7 @@ const I18N = {
         ui_import_all_title: "Load a character file onto the selected character",
         ui_ai_short: "4 stats from the card", ui_ai_world_short: "4 stats for the world",
         toast_imported_parts: "\"{char}\": imported {parts}.", part_status: "status", part_bonds: "relationship", part_body: "body",
+        preset_standard: "❤️ Standard", preset_standard_title: "Back to the standard stats: Health + Energy, as a new character starts",
         preset_fantasy: "⚔️ Fantasy",
         preset_survival: "🏕️ Survival",
         preset_romance: "💕 Romance",
@@ -88,6 +89,17 @@ const I18N = {
         confirm_ai_world: "Let AI design 4 stats for the world of \"{char}\" (an RP card, not one person)? This replaces the current stats.",
         sec_general: "General",
         confirm_preset: "Replace the current stats for {char} with this preset?",
+        preset_mine: "⭐ My set", ui_mine_group: "⭐ My sets", ui_mine_set_opt: "⭐ Set: {name}",
+        ui_mine_new: "＋ New set from these stats", ui_mine_new_title: "Make a new set of your own from this character's stats, then edit it here",
+        ui_mine_new_name: "Set {n}",
+        ui_mine_apply: "⭐ Put my set on this character…", ui_mine_apply_title: "Choose one of your sets: its stats go onto this character at once",
+        ui_mine_name_ph: "Set name", ui_mine_forget: "Delete this set",
+        ui_mine_editing: "You are editing the set itself: every change is saved into it at once. Pick a character above to go back.",
+        ui_mine_auto: "New characters start with:",
+        ui_mine_auto_title: "A character you meet for the first time (any chat, group chats too) gets this set instead of Health + Energy. Characters already set up are not touched.",
+        confirm_mine_forget: "Delete the set \"{name}\"? Characters that already use it keep their stats.",
+        toast_mine_applied: "⭐ \"{name}\" is on {char}. Click here to undo.", toast_mine_undone: "Undone: {char} has the old stats back.",
+        toast_mine_full: "Too many sets ({n}). Delete one first.",
         toast_exported: "Profile for \"{char}\" exported!",
         toast_imported: "Profile imported onto \"{char}\"!",
         toast_imported_all: "Imported {n} profile(s)!",
@@ -211,6 +223,7 @@ const I18N = {
         ui_import_all_title: "Загрузить файл персонажа в выбранного персонажа",
         ui_ai_short: "4 стата по карточке", ui_ai_world_short: "4 стата для мира",
         toast_imported_parts: "«{char}»: загружено — {parts}.", part_status: "статус", part_bonds: "отношения", part_body: "тело",
+        preset_standard: "❤️ Стандарт", preset_standard_title: "Вернуть стандартные статы: Здоровье + Энергия, как у нового персонажа",
         preset_fantasy: "⚔️ Фэнтези",
         preset_survival: "🏕️ Выживание",
         preset_romance: "💕 Романтика",
@@ -223,6 +236,17 @@ const I18N = {
         confirm_ai_world: "Пусть ИИ придумает 4 стата для мира «{char}» (РП-карточка, а не один персонаж)? Текущие статы будут заменены.",
         sec_general: "Основное",
         confirm_preset: "Заменить текущие статы «{char}» этим пресетом?",
+        preset_mine: "⭐ Мой набор", ui_mine_group: "⭐ Мои наборы", ui_mine_set_opt: "⭐ Набор: {name}",
+        ui_mine_new: "＋ Новый набор из этих статов", ui_mine_new_title: "Сделать свой новый набор из статов этого персонажа и сразу редактировать его здесь",
+        ui_mine_new_name: "Набор {n}",
+        ui_mine_apply: "⭐ Поставить свой набор…", ui_mine_apply_title: "Выберите свой набор: его статы сразу встанут этому персонажу",
+        ui_mine_name_ph: "Название набора", ui_mine_forget: "Удалить этот набор",
+        ui_mine_editing: "Вы редактируете сам набор: каждое изменение сразу сохраняется в нём. Чтобы вернуться, выберите персонажа вверху.",
+        ui_mine_auto: "Новые персонажи начинают с:",
+        ui_mine_auto_title: "Персонаж, которого вы встречаете впервые (в любом чате, в группах тоже), получает этот набор вместо «Здоровье + Энергия». Уже настроенных персонажей это не трогает.",
+        confirm_mine_forget: "Удалить набор «{name}»? Персонажи, у которых он уже стоит, сохранят свои статы.",
+        toast_mine_applied: "⭐ «{name}» стоит у «{char}». Нажмите сюда, чтобы отменить.", toast_mine_undone: "Отменено: у «{char}» снова прежние статы.",
+        toast_mine_full: "Слишком много наборов ({n}). Сначала удалите один.",
         toast_exported: "Профиль «{char}» экспортирован!",
         toast_imported: "Профиль импортирован в «{char}»!",
         toast_imported_all: "Импортировано профилей: {n}!",
@@ -346,8 +370,48 @@ const defaultSettings = {
     sceneReplies: 6,        // "in the scene": on the Scene Card's list, or spoke in the last N replies
     strictJson: true,
     perChatProfiles: false,
+    myPresets: [],          // ⭐ the user's own stat sets: [{ id, name, stats }] (config only, values start full)
+    myPresetDefault: '',    // id of the set new characters start with
+    // myPresetAuto: the "New characters start with" checkbox (set on load, see migrateMyPreset)
     profiles: {}
 };
+
+// ⭐ My set: a clean copy of a stat list — the setup only, every bar starts full
+function cleanStats(stats) {
+    return (Array.isArray(stats) ? stats : []).filter(x => x && typeof x === 'object').map(x => {
+        const o = { name: String(x.name || ''), desc: String(x.desc || ''), color: String(x.color || 'blue'), value: 100, dynamicColor: !!x.dynamicColor };
+        if (x.link) o.link = String(x.link);
+        return o;
+    });
+}
+const MY_PRESETS_MAX = 30;
+let editingSet = '';   // id of the ⭐ set open in the stat editor ('' = a character is open)
+const SET_OPT = '⭐set:', NEW_SET_OPT = '⭐new';
+function myPresets() {
+    if (!Array.isArray(settings.myPresets)) settings.myPresets = [];
+    return settings.myPresets.filter(x => x && x.id && Array.isArray(x.stats));
+}
+function myPresetById(id) { return id ? myPresets().find(x => x.id === id) || null : null; }
+function myPresetStats(id) { const m = myPresetById(id); const st = m ? cleanStats(m.stats).filter(x => x.name.trim()) : []; return st.length ? st : null; }
+function cleanSetName(x) { return String(x || '').replace(/[\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40); }
+// a set made by the one-set build ({ myPreset, myPresetAuto }) becomes the first named set
+function migrateMyPreset() {
+    if (!Array.isArray(settings.myPresets)) settings.myPresets = [];
+    if (Array.isArray(settings.myPreset) && settings.myPreset.length) {
+        const id = 'm' + Date.now().toString(36);
+        settings.myPresets.push({ id, name: t('preset_mine').replace(/^⭐\s*/, ''), stats: cleanStats(settings.myPreset) });
+        if (!settings.myPresetDefault) settings.myPresetDefault = id;
+    }
+    delete settings.myPreset;
+    if (typeof settings.myPresetAuto !== 'boolean') settings.myPresetAuto = !!settings.myPresetDefault;
+    if (!myPresetById(settings.myPresetDefault)) settings.myPresetDefault = (myPresets()[0] || {}).id || '';
+}
+function newProfile() {
+    const p = makeDefaultProfile();
+    const mine = settings.myPresetAuto ? myPresetStats(settings.myPresetDefault) : null;
+    if (mine) p.stats = mine;
+    return p;
+}
 
 function makeDefaultProfile() {
     return {
@@ -365,6 +429,7 @@ function loadSettings() {
     settings = Object.assign({}, defaultSettings, extension_settings[MODULE_NAME]);
     if (!settings.profiles) settings.profiles = {};
     if (!settings.chatStamps) settings.chatStamps = {};
+    migrateMyPreset();
     // heal NaN/garbage saved from empty number inputs by older builds
     if (!Number.isFinite(settings.updateFrequency)) settings.updateFrequency = defaultSettings.updateFrequency;
     if (!Number.isFinite(settings.injectDepth)) settings.injectDepth = defaultSettings.injectDepth;
@@ -415,7 +480,7 @@ function getProfile(charName) {
     const key = profileKey(charName);
     if (!settings.profiles[key]) {
         const globalTpl = (key !== charName && settings.profiles[charName]) ? settings.profiles[charName] : null;
-        settings.profiles[key] = globalTpl ? JSON.parse(JSON.stringify(globalTpl)) : makeDefaultProfile();
+        settings.profiles[key] = globalTpl ? JSON.parse(JSON.stringify(globalTpl)) : newProfile();
         settings.profiles[key].msgCount = 0; // fresh counter for a new chat
     }
     let p = settings.profiles[key];
@@ -1179,34 +1244,58 @@ function renderDynamicStats() {
         currentlyEditingChar = activeChars[0];
     }
 
+    const editSet = myPresetById(editingSet);
+    if (!editSet) editingSet = '';
     let html = `<div class="flex-container alignitemscenter flexgap5 margin-b-10">
         <label>${t('ui_edit_for')}</label>
         <select id="rpg-char-select" class="text_pole flex1">`;
     activeChars.forEach(name => {
-        html += `<option value="${escapeHtml(name)}" ${name === currentlyEditingChar ? 'selected' : ''}>${escapeHtml(name)}</option>`;
+        html += `<option value="${escapeHtml(name)}" ${!editSet && name === currentlyEditingChar ? 'selected' : ''}>${escapeHtml(name)}</option>`;
     });
+    // ⭐ the user's own sets are edited right here, like a character
+    if (myPresets().length) {
+        html += `<optgroup label="${escapeHtml(t('ui_mine_group'))}">${myPresets().map(m => `<option value="${escapeHtml(SET_OPT + m.id)}" ${editSet && m.id === editSet.id ? 'selected' : ''}>${escapeHtml(t('ui_mine_set_opt', { name: m.name }))}</option>`).join('')}</optgroup>`;
+    }
     html += `</select></div>`;
 
-    // the character's file (status, relationship, body) and a reset: one row of small buttons
-    html += `<div class="rpg-tools">
-        <button type="button" class="rpg-tool" id="rpg-export-profile" title="${escapeHtml(t('ui_export_all_title'))}"><i class="fa-solid fa-file-export"></i> ${t('ui_export_short')}</button>
-        <button type="button" class="rpg-tool" id="rpg-import-profile" title="${escapeHtml(t('ui_import_all_title'))}"><i class="fa-solid fa-file-import"></i> ${t('ui_import_short')}</button>
-        <button type="button" class="rpg-tool danger" id="rpg-reset-char" title="${escapeHtml(t('ui_reset'))}"><i class="fa-solid fa-rotate-left"></i> ${t('ui_reset_short')}</button>
-    </div>`;
+    if (editSet) {
+        // a set is open: its name and a delete, no character tools
+        html += `<div class="rpg-mine-row">
+            <input type="text" class="text_pole" id="rpg-mine-name" maxlength="40" value="${escapeHtml(editSet.name)}" placeholder="${escapeHtml(t('ui_mine_name_ph'))}">
+            <button type="button" class="rpg-tool rpg-mine-icon danger" id="rpg-mine-forget" title="${escapeHtml(t('ui_mine_forget'))}"><i class="fa-solid fa-trash"></i></button>
+        </div>
+        <div class="rpg-hint rpg-mine-editing">${t('ui_mine_editing')}</div>`;
+    } else {
 
-    // the two designers side by side; an RP card (a world, not one person) gets the world one lit up
-    let worldCard = false;
-    try { worldCard = BODY.isWorldName(currentlyEditingChar); } catch (e) { worldCard = false; }
-    html += `<div class="rpg-tools rpg-tools-ai">
-        <button type="button" class="rpg-tool ai" id="rpg-ai-generate" title="${escapeHtml(t('ui_ai_generate'))}">✨ ${t('ui_ai_short')}</button>
-        <button type="button" class="rpg-tool world${worldCard ? ' rpg-suggest' : ''}" id="rpg-ai-generate-world" title="${escapeHtml(t('ui_ai_world'))}">🌍 ${t('ui_ai_world_short')}</button>
-    </div>`;
-    if (worldCard) html += `<div class="rpg-hint">${t('ui_ai_world_hint')}</div>`;
-    html += `<div class="rpg-presets">
+        // the character's file (status, relationship, body) and a reset: one row of small buttons
+        html += `<div class="rpg-tools">
+            <button type="button" class="rpg-tool" id="rpg-export-profile" title="${escapeHtml(t('ui_export_all_title'))}"><i class="fa-solid fa-file-export"></i> ${t('ui_export_short')}</button>
+            <button type="button" class="rpg-tool" id="rpg-import-profile" title="${escapeHtml(t('ui_import_all_title'))}"><i class="fa-solid fa-file-import"></i> ${t('ui_import_short')}</button>
+            <button type="button" class="rpg-tool danger" id="rpg-reset-char" title="${escapeHtml(t('ui_reset'))}"><i class="fa-solid fa-rotate-left"></i> ${t('ui_reset_short')}</button>
+        </div>`;
+
+        // the two designers side by side; an RP card (a world, not one person) gets the world one lit up
+        let worldCard = false;
+        try { worldCard = BODY.isWorldName(currentlyEditingChar); } catch (e) { worldCard = false; }
+        html += `<div class="rpg-tools rpg-tools-ai">
+            <button type="button" class="rpg-tool ai" id="rpg-ai-generate" title="${escapeHtml(t('ui_ai_generate'))}">✨ ${t('ui_ai_short')}</button>
+            <button type="button" class="rpg-tool world${worldCard ? ' rpg-suggest' : ''}" id="rpg-ai-generate-world" title="${escapeHtml(t('ui_ai_world'))}">🌍 ${t('ui_ai_world_short')}</button>
+        </div>`;
+        if (worldCard) html += `<div class="rpg-hint">${t('ui_ai_world_hint')}</div>`;
+    }
+    html += `<div class="rpg-presets rpg-presets-main">
+        <div class="rpg-preset-btn" data-preset="standard" title="${escapeHtml(t('preset_standard_title'))}">${t('preset_standard')}</div>
         <div class="rpg-preset-btn" data-preset="fantasy">${t('preset_fantasy')}</div>
         <div class="rpg-preset-btn" data-preset="survival">${t('preset_survival')}</div>
         <div class="rpg-preset-btn" data-preset="romance">${t('preset_romance')}</div>
     </div>
+    ${editSet ? '' : `<div class="rpg-mine-row">
+        ${myPresets().length ? `<select class="text_pole" id="rpg-mine-pick" title="${escapeHtml(t('ui_mine_apply_title'))}"><option value="">${escapeHtml(t('ui_mine_apply'))}</option>${myPresets().filter(m => myPresetStats(m.id)).map(m => `<option value="${escapeHtml(m.id)}" title="${escapeHtml(m.stats.map(x => x.name).join(', '))}">⭐ ${escapeHtml(m.name)}</option>`).join('')}</select>` : ''}
+        <button type="button" class="rpg-tool rpg-mine-save${myPresets().length ? ' rpg-mine-icon' : ''}" id="rpg-mine-new" title="${escapeHtml(t('ui_mine_new_title'))}">${myPresets().length ? '<i class="fa-solid fa-plus"></i>' : t('ui_mine_new')}</button>
+    </div>`}
+    ${myPresets().length ? `<div class="rpg-mine-default" title="${escapeHtml(t('ui_mine_auto_title'))}">
+        <label class="checkbox_label"><input type="checkbox" id="rpg-mine-auto" ${settings.myPresetAuto ? 'checked' : ''}> <span>${t('ui_mine_auto')}</span></label>
+        <select class="text_pole" id="rpg-mine-default" ${settings.myPresetAuto ? '' : 'disabled'}>${myPresets().map(m => `<option value="${escapeHtml(m.id)}" ${m.id === settings.myPresetDefault ? 'selected' : ''}>⭐ ${escapeHtml(m.name)}</option>`).join('')}</select></div>` : ''}
     <div class="rpg-hint">${t('ui_world_presets')}</div>
     <div class="rpg-presets">
         <div class="rpg-preset-btn" data-preset="academy">${t('preset_academy')}</div>
@@ -1215,7 +1304,9 @@ function renderDynamicStats() {
     </div>`;
     html += `<div id="rpg-stats-setup-list">`;
 
-    const profile = getProfile(currentlyEditingChar);
+    // the stat list below edits the open set itself, or the character
+    const profile = editSet || getProfile(currentlyEditingChar);
+    const target = editSet ? editSet.name : currentlyEditingChar;
 
     profile.stats.forEach((stat, i) => {
         let colorOptionsHtml = "";
@@ -1248,7 +1339,10 @@ function renderDynamicStats() {
     $('#rpg-dynamic-stats-container').html(html);
 
     $('#rpg-char-select').on('change', function () {
-        currentlyEditingChar = $(this).val();
+        const v = String($(this).val() || '');
+        if (v.startsWith(SET_OPT)) { editingSet = v.slice(SET_OPT.length); renderDynamicStats(); return; }
+        editingSet = '';
+        currentlyEditingChar = v;
         renderDynamicStats();
     });
 
@@ -1288,10 +1382,58 @@ function renderDynamicStats() {
         saveSettings(); updateContextInjection();
     });
 
+    // ⭐ a new set from this character's stats: made at once, opened in the editor, its name ready to type
+    $('#rpg-mine-new').on('click', () => {
+        const list = myPresets();
+        if (list.length >= MY_PRESETS_MAX) { toastr.warning(t('toast_mine_full', { n: MY_PRESETS_MAX })); return; }
+        let n = list.length + 1, name;
+        do { name = t('ui_mine_new_name', { n: n++ }); } while (list.some(m => m.name.toLowerCase() === name.toLowerCase()));
+        const id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const st = cleanStats(profile.stats).filter(x => x.name.trim());
+        settings.myPresets = list.concat([{ id, name, stats: st.length ? st : makeDefaultProfile().stats }]);
+        if (!list.length) { settings.myPresetDefault = id; settings.myPresetAuto = true; }   // the first set: new characters start with it
+        editingSet = id;
+        saveSettings(); renderDynamicStats();
+        $('#rpg-mine-name').trigger('focus').trigger('select');
+    });
+    // the open set: renamed as you type (kept if left empty)
+    $('#rpg-mine-name').on('input', function () {
+        if (!editSet) return;
+        const nm = cleanSetName(this.value);
+        if (!nm) return;
+        editSet.name = nm; saveSettings();
+        $('#rpg-char-select option:selected').text(t('ui_mine_set_opt', { name: nm }));
+        $(`#rpg-mine-default option[value="${CSS.escape(editSet.id)}"]`).text('⭐ ' + nm);
+    }).on('change', function () { if (!cleanSetName(this.value) && editSet) this.value = editSet.name; });
+    $('#rpg-mine-forget').on('click', () => {
+        if (!editSet || !confirm(t('confirm_mine_forget', { name: editSet.name }))) return;
+        settings.myPresets = myPresets().filter(x => x.id !== editSet.id);
+        if (settings.myPresetDefault === editSet.id) settings.myPresetDefault = (myPresets()[0] || {}).id || '';
+        if (!myPresets().length) settings.myPresetAuto = false;
+        editingSet = '';
+        saveSettings(); renderDynamicStats();
+    });
+    // ⭐ put a set on this character: at once, no question; the toast undoes it
+    $('#rpg-mine-pick').on('change', function () {
+        const m = myPresetById(this.value), st = m ? myPresetStats(m.id) : null;
+        this.value = '';
+        if (!st) return;
+        const who = currentlyEditingChar, before = JSON.parse(JSON.stringify(profile.stats));
+        profile.stats = st;
+        saveSettings(); renderDynamicStats(); updateContextInjection();
+        toastr.info(t('toast_mine_applied', { name: escapeHtml(m.name), char: escapeHtml(who) }), '', {
+            timeOut: 8000, extendedTimeOut: 4000,
+            onclick: () => { profile.stats = before; saveSettings(); renderDynamicStats(); updateContextInjection(); toastr.success(t('toast_mine_undone', { char: escapeHtml(who) })); }
+        });
+    });
+    $('#rpg-mine-auto').on('change', function () { settings.myPresetAuto = this.checked; $('#rpg-mine-default').prop('disabled', !this.checked); saveSettings(); });
+    $('#rpg-mine-default').on('change', function () { if (myPresetById(this.value)) { settings.myPresetDefault = this.value; saveSettings(); } });
+
     $('.rpg-preset-btn').on('click', function () {
-        const preset = statPresets()[$(this).data('preset')];
+        const key = $(this).data('preset');
+        const preset = key === 'standard' ? makeDefaultProfile().stats : statPresets()[key];   // ❤️ Standard: Health + Energy
         if (!preset) return;
-        if (!confirm(t('confirm_preset', { char: currentlyEditingChar }))) return;
+        if (!confirm(t('confirm_preset', { char: target }))) return;
         profile.stats = JSON.parse(JSON.stringify(preset));
         saveSettings();
         renderDynamicStats();
@@ -5171,7 +5313,7 @@ function statusAsk(charName) {
     // the extra questions, each only when its switch is on
     const c0 = charOf(charName, false);
     let more = '';
-    if (settings.slots && settings.itemsSelf) more += `\n- picked_up: things ${charName} took for themselves from the scene (not from ${u}). used_up: things from ${charName}'s own pockets that ${charName} used up, ate, drank, broke or gave to someone other than ${u} — including what ${u} has just handed over, if ${charName} ate or used it there. ${charName}'s pockets now: ${c0 && c0.slots.length ? c0.slots.map(x => x.name).join(', ') : 'empty'}.`;
+    if (settings.slots && settings.itemsSelf) more += `\n- picked_up: things ${charName} took for themselves from the scene (not from ${u}) and kept — not things taken and used up at once, and nothing ${charName} already has in their pockets. used_up: things from ${charName}'s own pockets that ${charName} used up, ate, drank, broke or gave to someone other than ${u} — including what ${u} has just handed over, if ${charName} ate or used it there. ${charName}'s pockets now: ${c0 && c0.slots.length ? c0.slots.map(x => x.name).join(', ') : 'empty'}.`;
     // the needs this character has: washing, and needs of their own
     const nd0 = settings.needs ? needsOf(charName) : null;
     const askWash = !!(nd0 && nd0.hyg), askOwn = nd0 && nd0.own.length ? nd0.own.map(o => o.name) : [];
