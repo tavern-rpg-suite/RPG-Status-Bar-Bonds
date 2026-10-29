@@ -887,7 +887,8 @@ function renderInlineStatus(messageId, charName, statsData, isLoading = false, i
         statsData.stats.forEach(stat => {
             let val = Math.max(0, Math.min(100, stat.value));
 
-            let colorClass = `rpg-color-${stat.color}`;
+            // only a colour from the list: a chat or character file could carry anything in this field
+            let colorClass = `rpg-color-${Object.prototype.hasOwnProperty.call(colorOptions(), stat.color) ? stat.color : 'blue'}`;
             if (stat.dynamicColor) {
                 colorClass = val > 60 ? 'rpg-color-green' : (val >= 30 ? 'rpg-color-gold' : 'rpg-color-red');
             }
@@ -1185,6 +1186,7 @@ function importProfile() {
                 if (data && typeof data === 'object') {
                     let n = 0;
                     for (const [name, prof] of Object.entries(data)) {
+                        if (name === '__proto__' || name === 'constructor' || name === 'prototype') continue;
                         if (prof && Array.isArray(prof.stats)) { settings.profiles[name] = JSON.parse(JSON.stringify(prof)); n++; }
                     }
                     if (n > 0) {
