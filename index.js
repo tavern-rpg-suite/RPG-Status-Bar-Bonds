@@ -5265,10 +5265,18 @@ function fromStatus(charName, body, messageId) {
         if (settings.needs) {
             const nd = needsOf(charName);
             // one satiety: a meal fills it much, a drink a little
+            // the story took something out of them (mud, a long run): before what it gave back, so a bath after the mud still counts
+            if (nd.hyg && yes(body.got_dirty)) c.hyg = Math.min(c.hyg, 15);
+            if (nd.eng && yes(body.wore_out)) c.eng = clamp(c.eng - 30, 0, 100);
             if (yes(body.ate)) c.sat = clamp(c.sat + 55, 0, 100);
             if (yes(body.drank)) c.sat = clamp(c.sat + 15, 0, 100);
             if (yes(body.slept)) c.eng = Math.max(c.eng, 92);
             if (nd.hyg && yes(body.washed)) c.hyg = 100;
+            // something in the scene took one of their own needs away at once: −40, before what refilled it
+            (Array.isArray(body.drained) ? body.drained : []).slice(0, 6).forEach(n => {
+                const o = nd.own.find(x => keyOf(x.name) === keyOf(n) || same(x.name, n));
+                if (o) c.own[o.id] = clamp(ownVal(c, o) - 40, 0, 100);
+            });
             (Array.isArray(body.refilled) ? body.refilled : []).slice(0, 6).forEach(n => {
                 const o = nd.own.find(x => keyOf(x.name) === keyOf(n) || same(x.name, n));
                 if (o) c.own[o.id] = 100;
@@ -5329,7 +5337,11 @@ function statusAsk(charName) {
     const nd0 = settings.needs ? needsOf(charName) : null;
     const askWash = !!(nd0 && nd0.hyg), askOwn = nd0 && nd0.own.length ? nd0.own.map(o => o.name) : [];
     if (askWash) more += `\n- washed: true only if ${charName} personally bathed, showered or washed up there.`;
+    if (askWash) more += `\n- got_dirty: true only if ${charName} clearly got dirty there (mud, blood, a fall into a puddle, soaked through, hard sweaty work).`;
+    const askTired = !!(nd0 && nd0.eng);
+    if (askTired) more += `\n- wore_out: true only if ${charName} clearly wore themselves out there (a long run, hard labour, a fight, a sleepless effort).`;
     if (askOwn.length) more += `\n- refilled: which of ${charName}'s own needs (${askOwn.join(', ')}) ${charName} clearly satisfied there, by name. Empty if none.`;
+    if (askOwn.length) more += `\n- drained: which of ${charName}'s own needs (${askOwn.join(', ')}) something in the scene clearly used up or took away at once, by name. Empty if none.`;
     if (settings.nights) more += `\n- drank_alcohol: true only if ${charName} actually got drunk or drank a lot of alcohol there.`;
     if (settings.adrenaline) more += `\n- fought: true only if ${charName} was in a real fight there (blows, weapons, a struggle), not an argument.`;
     if (settings.intimFx) {
@@ -5340,7 +5352,7 @@ function statusAsk(charName) {
     if (preg) more += `\n- pregnancy_ended: true only if the story clearly ends ${charName}'s pregnancy there (a birth, a miscarriage, an abortion).`;
     return `
 6. Also report what happened to ${charName}'s body and belongings in the NEW part of the story only (after the line "=== NEW ==="), in a "body" object:
-"body": {"ate": false, "drank": false, "slept": false, "new_ailments": [{"name": "", "days": 1}], "healed": [], "got_from_player": [], "gave_to_player": []${settings.slots && settings.itemsSelf ? ', "picked_up": [], "used_up": []' : ''}${settings.nights ? ', "drank_alcohol": false' : ''}${settings.adrenaline ? ', "fought": false' : ''}${c0 && c0.preg ? ', "pregnancy_ended": false' : ''}${askWash ? ', "washed": false' : ''}${askOwn.length ? ', "refilled": []' : ''}${settings.intimFx ? ', "intimacy_effects": []' : ''}}
+"body": {"ate": false, "drank": false, "slept": false, "new_ailments": [{"name": "", "days": 1}], "healed": [], "got_from_player": [], "gave_to_player": []${settings.slots && settings.itemsSelf ? ', "picked_up": [], "used_up": []' : ''}${settings.nights ? ', "drank_alcohol": false' : ''}${settings.adrenaline ? ', "fought": false' : ''}${c0 && c0.preg ? ', "pregnancy_ended": false' : ''}${askWash ? ', "washed": false, "got_dirty": false' : ''}${askTired ? ', "wore_out": false' : ''}${askOwn.length ? ', "refilled": [], "drained": []' : ''}${settings.intimFx ? ', "intimacy_effects": []' : ''}}
 - ate / drank / slept: true only if ${charName} personally ate something, drank, or slept through a night there — never for what someone else in the scene did (${u}, another character, an animal).
 - new_ailments: a small illness or injury ${charName} clearly got (a cold, a sprained ankle, a toothache) and how many days it lasts (1-7). healed: names of ailments that clearly passed.
 - got_from_player: things ${u} actually handed to ${charName}, or ${charName} took from ${u}, by name. gave_to_player: things ${charName} actually handed to ${u}.${more}
@@ -5410,7 +5422,7 @@ function slotCap() { return clamp(parseInt(settings.slotCount, 10) || 5, 1, 8); 
 // a thing from the player's backpack (by name, or the item itself) into the character's pocket
 function takeFromPlayer(charName, nameOrItem, quiet = false) {
     const c = charOf(charName); if (!c) return false;
-    if (c.slots.length >= slotCap()) { toastr.info(t('full', { name: charName })); return false; }
+    if (c.slots.length >= slotCap()) { if (!quiet) toastr.info(t('full', { name: charName })); return false; }
     const v = inv();
     let item = null;
     if (nameOrItem && typeof nameOrItem === 'object') item = nameOrItem;
@@ -5421,8 +5433,9 @@ function takeFromPlayer(charName, nameOrItem, quiet = false) {
     const nm = String(item ? item.name : nameOrItem || '').trim().slice(0, 60);
     if (!nm) return false;
     c.slots.push({ id: genId(), name: nm, desc: item && item.desc ? String(item.desc).slice(0, 200) : '', from: 'player', item: item || null });
+    // no toast: the pocket shows it, and the tab's log keeps the line (fewer notifications, as asked)
+    logIt(c, '← ' + nm);
     saveChat();
-    toastr.info(t('gave', { name: charName, item: nm }));
     if (!quiet) { updateInjection(); refresh(); }
     return true;
 }
@@ -5439,8 +5452,8 @@ function giveToPlayer(charName, nameOrId, quiet = false) {
     if (!nm) return false;
     const v = inv();
     if (v) v.add(slot && slot.item ? slot.item : { name: nm, desc: slot ? slot.desc : '', type: 'misc' });
+    logIt(c, '→ ' + nm);
     saveChat();
-    toastr.info(t('got', { name: charName, item: nm }));
     if (!quiet) { updateInjection(); refresh(); }
     return true;
 }
