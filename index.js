@@ -1058,7 +1058,7 @@ function bandWord(val, dynamicColor) {
 // line at depth 0, stating what is ALREADY true, plus one rule telling the model to
 // write from it. No table, no numbers for the model to negotiate with.
 /* Who the model hears about: in a group, everyone in it sits in the chat's cast — the ones at home
-   in Durham as much as the ones on the train. "In the scene" is decided by code, no call: not muted
+   in the country house as much as the ones on the train. "In the scene" is decided by code, no call: not muted
    in the group, and on the Scene Card's list of who is present, or a speaker of the last N replies
    (the last two always count — the card may lag a reply behind). Nobody found: everyone, as before. */
 function sceneCharacters() {
@@ -4611,7 +4611,7 @@ window.BONDS.relations = {
     },
     /* The relationship in words, for the diary's People page (read-only), and one level 0–100 for its
        memory: the mean of trust, comfort, respect and affection (attraction is not "how close").
-       Found by the name or by the first word of it ("Sebastian Moran" → "Moran"'s page and back). */
+       Found by the name or by the first word of it ("Oliver Grant" → "Grant"'s page and back). */
     describe: (name) => {
         if (!state || !state.npcs || !name) return null;
         const k = nameKey(name), f = k.split(/[\s(]+/)[0];
