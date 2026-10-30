@@ -4731,6 +4731,7 @@ const defaultSettings = {
     itemsSelf: true,        // they pick things up for themselves and use what is in their pockets
     nights: true,           // a hangover after drinking, a bad day after a night without sleep
     adrenaline: true,       // after a fight: a rush, then the crash
+    intimFx: true,          // after intimacy the character feels something too (afterglow, a mark…): read in the Status Bar's own request
     inject: true,
     injectDepth: 2,
     birth: true,            // at term: the newspaper window (play now / later / skip), then a child
@@ -4787,7 +4788,7 @@ const I18N = {
         concept_roll: 'Dice after the night with {who}: {r} — chance {c}%',
         st_hangover: 'Hangover', st_sleepless: 'Slept badly', st_rush: 'Adrenaline', st_crash: 'After the rush', states: 'State',
         inj_hangover: 'hungover — head heavy, light too bright', inj_sleepless: 'slept badly — slower and shorter-tempered', inj_rush: 'still running on adrenaline after the fight — bold, sharp, quick to flare', inj_crash: 'the adrenaline has worn off — shaky, drained, wants quiet',
-        s_items: 'They pick things up for themselves and use what is in their pockets', s_nights_h: 'Nights and fights', s_nights: 'Hangover after drinking, a bad day after a night without sleep', s_adren: 'Adrenaline after a fight: a rush, then the crash',
+        s_items: 'They pick things up for themselves and use what is in their pockets', s_nights_h: 'Nights, fights and closeness', s_intimfx: 'After intimacy the character feels something too: afterglow, marks, soreness (read in the same Status Bar request)', s_nights: 'Hangover after drinking, a bad day after a night without sleep', s_adren: 'Adrenaline after a fight: a rush, then the crash',
         // pregnancy in weeks
         trim1: '1st trimester', trim2: '2nd trimester', trim3: '3rd trimester',
         sym1: 'nausea, odd cravings', sym2: 'the belly shows', sym3: 'heavy, tires quickly',
@@ -4861,7 +4862,7 @@ const I18N = {
         concept_roll: 'Кубик после ночи с {who}: {r} — шанс {c}%',
         st_hangover: 'Похмелье', st_sleepless: 'Не выспался(-ась)', st_rush: 'Адреналин', st_crash: 'Отходняк', states: 'Состояние',
         inj_hangover: 'похмелье — тяжёлая голова, свет слишком яркий', inj_sleepless: 'не выспался(-ась) — медленнее и раздражительнее', inj_rush: 'ещё на адреналине после драки — смелый(-ая), резкий(-ая), легко вспыхивает', inj_crash: 'адреналин схлынул — потряхивает, пусто, хочется тишины',
-        s_items: 'Сами берут себе вещи и пользуются тем, что в карманах', s_nights_h: 'Ночи и драки', s_nights: 'Похмелье после выпивки, разбитый день после ночи без сна', s_adren: 'Адреналин после драки: подъём, потом отходняк',
+        s_items: 'Сами берут себе вещи и пользуются тем, что в карманах', s_nights_h: 'Ночи, драки и близость', s_intimfx: 'После близости персонаж тоже что-то чувствует: нега, следы, ломота (читается в том же запросе Status Bar)', s_nights: 'Похмелье после выпивки, разбитый день после ночи без сна', s_adren: 'Адреналин после драки: подъём, потом отходняк',
         trim1: 'I триместр', trim2: 'II триместр', trim3: 'III триместр',
         sym1: 'тошнота, тянет на странное', sym2: 'живот уже заметен', sym3: 'тяжело, быстро устаёт',
         due_in: 'срок примерно через {n} дн.', due_now: 'срок подошёл',
@@ -4985,8 +4986,10 @@ function charOf(name, create = true) {
     }
     const c = s.chars[k];
     if (!Array.isArray(c.ailments)) c.ailments = [];
+    if (c.ailments.length > 1 && mergeAilments(c)) saveChat();   // the same ailment written twice in other words: one
     if (!Array.isArray(c.slots)) c.slots = [];
     if (!Array.isArray(c.log)) c.log = [];
+    if (!Array.isArray(c.fx)) c.fx = [];
     // food and water were two scales before: one "Satiety" now, as in RPG Vitals — the two averaged once
     if (!c.merged) { if (Number.isFinite(c.hyd)) c.sat = Math.round(((Number.isFinite(c.sat) ? c.sat : 80) + c.hyd) / 2); delete c.hyd; c.merged = true; }
     if (!Number.isFinite(c.hyg)) c.hyg = 90;
@@ -5117,7 +5120,7 @@ function useCondom(detail, name) {
     const c = charOf(name, false);
     if (c) {
         const i = c.slots.findIndex(x => CONDOM_RE.test(x.name));
-        if (i >= 0) { c.slots.splice(i, 1); detail.condomUsed = true; toastr.info(t('condom_used', { who: name, from: t('from_pocket', { name }) })); return true; }
+        if (i >= 0) { markGone(c, c.slots[i].name); c.slots.splice(i, 1); detail.condomUsed = true; toastr.info(t('condom_used', { who: name, from: t('from_pocket', { name }) })); return true; }
     }
     const v = inv();
     const hit = v ? (v.list() || []).find(x => CONDOM_RE.test(x.name)) : null;
@@ -5199,7 +5202,7 @@ function newDay() {
         c.ailments = c.ailments.filter(a => { if (!Number.isFinite(a.days)) return true; a.days -= 1; return a.days > 0; });
         if (settings.ailments && d100() <= clamp(+settings.ailmentChance || 0, 0, 50)) {
             const list = t('ail_list');
-            const free = list.filter(n => !c.ailments.some(a => keyOf(a.name) === keyOf(n)));
+            const free = list.filter(n => !c.ailments.some(a => alike(a.name, n)));
             if (free.length) { const nm = free[Math.floor(Math.random() * free.length)]; c.ailments.push({ id: genId(), name: nm, days: 1 + Math.floor(Math.random() * 3), from: 'dice' }); logIt(c, '🎲 ' + nm); }
         }
     });
@@ -5282,26 +5285,32 @@ function fromStatus(charName, body, messageId) {
         if (settings.ailments) {
             (Array.isArray(body.new_ailments) ? body.new_ailments : []).slice(0, 3).forEach(a => {
                 const nm = String((a && (a.name || a)) || '').trim().slice(0, 40);
-                if (!nm || c.ailments.some(x => keyOf(x.name) === keyOf(nm))) return;
-                c.ailments.push({ id: genId(), name: nm, days: clamp(parseInt(a && a.days, 10) || 2, 1, 14), from: 'story' });
+                if (!nm) return;
+                const days = clamp(parseInt(a && a.days, 10) || 2, 1, 14);
+                // already there, in other words ("a bruised rib" / "bruised ribs"): one ailment, its days renewed
+                const was = c.ailments.find(x => alike(x.name, nm));
+                if (was) { if (Number.isFinite(was.days) && days > was.days) was.days = days; return; }
+                c.ailments.push({ id: genId(), name: nm, days, from: 'story' });
             });
-            (Array.isArray(body.healed) ? body.healed : []).forEach(n => { const kk = keyOf(n); c.ailments = c.ailments.filter(a => keyOf(a.name) !== kk && !keyOf(a.name).includes(kk)); });
+            (Array.isArray(body.healed) ? body.healed : []).forEach(n => { const kk = keyOf(n); if (!kk) return; c.ailments = c.ailments.filter(a => keyOf(a.name) !== kk && !keyOf(a.name).includes(kk) && !alike(a.name, n)); });
         }
+        if (settings.intimFx && Array.isArray(body.intimacy_effects) && body.intimacy_effects.length) takeFx(c, body.intimacy_effects);
         if (settings.slots) {
-            (Array.isArray(body.got_from_player) ? body.got_from_player : []).slice(0, 3).forEach(n => takeFromPlayer(charName, n, true));
+            // a thing you took back (or that she used up) is not handed to her again by an older line of the story
+            (Array.isArray(body.got_from_player) ? body.got_from_player : []).slice(0, 3).forEach(n => { if (!wasGone(c, n)) takeFromPlayer(charName, n, true); });
             (Array.isArray(body.gave_to_player) ? body.gave_to_player : []).slice(0, 3).forEach(n => giveToPlayer(charName, n, true));
             if (settings.itemsSelf) {
                 // picked up for themselves (not from the player): into a free pocket
                 (Array.isArray(body.picked_up) ? body.picked_up : []).slice(0, 3).forEach(n => {
                     const nm = String(n || '').trim().slice(0, 60);
-                    if (!nm || c.slots.length >= slotCap() || c.slots.some(x => same(x.name, nm))) return;
+                    if (!nm || c.slots.length >= slotCap() || c.slots.some(x => same(x.name, nm)) || wasGone(c, nm)) return;
                     c.slots.push({ id: genId(), name: nm, desc: '', from: 'own', item: null });
                     logIt(c, '+ ' + nm);
                 });
                 // used up, eaten, given to someone else: out of the pocket
                 (Array.isArray(body.used_up) ? body.used_up : []).slice(0, 3).forEach(n => {
-                    const i = c.slots.findIndex(x => same(x.name, n));
-                    if (i >= 0) logIt(c, '− ' + c.slots.splice(i, 1)[0].name);
+                    const i = pocketIndex(c, n);
+                    if (i >= 0) { const gone = c.slots.splice(i, 1)[0]; markGone(c, gone.name); logIt(c, '− ' + gone.name); }
                 });
             }
         }
@@ -5323,11 +5332,15 @@ function statusAsk(charName) {
     if (askOwn.length) more += `\n- refilled: which of ${charName}'s own needs (${askOwn.join(', ')}) ${charName} clearly satisfied there, by name. Empty if none.`;
     if (settings.nights) more += `\n- drank_alcohol: true only if ${charName} actually got drunk or drank a lot of alcohol there.`;
     if (settings.adrenaline) more += `\n- fought: true only if ${charName} was in a real fight there (blows, weapons, a struggle), not an argument.`;
+    if (settings.intimFx) {
+        const curFx = liveFx(c0).map(f => f.name);
+        more += `\n- intimacy_effects: only if ${charName} personally had intimate contact there (a real kiss, a long embrace, a night together): 1–2 effects it left on ${charName}, each {"name": "", "kind": "buff" or "debuff", "turns": 3-12, "desc": ""} — a buff for what it gave (afterglow, calm, warmth, a good mood) and/or a debuff for what it left (a visible mark, soreness, a sleepless night). "desc": one short sentence on how it feels or shows. Tasteful, never explicit. Do not repeat one ${charName} already has: ${curFx.length ? curFx.join(', ') : 'none'}. Empty otherwise.`;
+    }
     const preg = c0 && c0.preg;
     if (preg) more += `\n- pregnancy_ended: true only if the story clearly ends ${charName}'s pregnancy there (a birth, a miscarriage, an abortion).`;
     return `
 6. Also report what happened to ${charName}'s body and belongings in the NEW part of the story only (after the line "=== NEW ==="), in a "body" object:
-"body": {"ate": false, "drank": false, "slept": false, "new_ailments": [{"name": "", "days": 1}], "healed": [], "got_from_player": [], "gave_to_player": []${settings.slots && settings.itemsSelf ? ', "picked_up": [], "used_up": []' : ''}${settings.nights ? ', "drank_alcohol": false' : ''}${settings.adrenaline ? ', "fought": false' : ''}${c0 && c0.preg ? ', "pregnancy_ended": false' : ''}${askWash ? ', "washed": false' : ''}${askOwn.length ? ', "refilled": []' : ''}}
+"body": {"ate": false, "drank": false, "slept": false, "new_ailments": [{"name": "", "days": 1}], "healed": [], "got_from_player": [], "gave_to_player": []${settings.slots && settings.itemsSelf ? ', "picked_up": [], "used_up": []' : ''}${settings.nights ? ', "drank_alcohol": false' : ''}${settings.adrenaline ? ', "fought": false' : ''}${c0 && c0.preg ? ', "pregnancy_ended": false' : ''}${askWash ? ', "washed": false' : ''}${askOwn.length ? ', "refilled": []' : ''}${settings.intimFx ? ', "intimacy_effects": []' : ''}}
 - ate / drank / slept: true only if ${charName} personally ate something, drank, or slept through a night there — never for what someone else in the scene did (${u}, another character, an animal).
 - new_ailments: a small illness or injury ${charName} clearly got (a cold, a sprained ankle, a toothache) and how many days it lasts (1-7). healed: names of ailments that clearly passed.
 - got_from_player: things ${u} actually handed to ${charName}, or ${charName} took from ${u}, by name. gave_to_player: things ${charName} actually handed to ${u}.${more}
@@ -5341,6 +5354,57 @@ function same(a, b) {
     if (!x || !y) return false;
     try { if (window.RPG && window.RPG.match && window.RPG.match.same(x, y)) return true; } catch (e) { /* no matcher */ }
     return x === y || (x.length >= 4 && y.includes(x)) || (y.length >= 4 && x.includes(y));
+}
+/* The story names a thing or an ailment in its own words: "a cookie" for the "Cookie" in her pocket,
+   "a bar of chocolate" for the "Chocolate bar", "bruised ribs" for "A bruised rib". Two names are the
+   same when every word of the shorter one begins like a word of the other (Russian endings change the
+   tail of a word, not its start). "Sore throat" and "Sore back" stay two things. */
+const NAME_STOP = new Set(['the', 'of', 'and', 'with', 'from', 'for', 'a', 'an', 'in', 'on', 'в', 'во', 'на', 'и', 'с', 'со', 'от', 'из', 'для', 'у', 'по', 'после', 'под']);
+function nameWords(x) { return String(x || '').toLowerCase().replace(/ё/g, 'е').replace(/\(.*?\)/g, ' ').split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 3 && !NAME_STOP.has(w)); }
+function sameStart(a, b) {
+    const n = Math.min(a.length, b.length), need = Math.max(3, Math.min(5, n - 1));
+    let i = 0; while (i < n && a[i] === b[i]) i++;
+    return i >= need;
+}
+function alike(a, b) {
+    if (same(a, b)) return true;
+    const x = nameWords(a), y = nameWords(b);
+    if (!x.length || !y.length) return false;
+    const [sh, lo] = x.length <= y.length ? [x, y] : [y, x];
+    return sh.every(w => lo.some(v => sameStart(w, v)));
+}
+/* A thing that left a pocket (taken back, removed, eaten, handed over) stays gone. The Status Bar reads
+   the last ten messages, and an older line ("she slipped a cookie into her pocket", "you gave her the
+   croissant") could be reported again after the thing had left — and it came back. For as many replies
+   as that window holds, the same thing is not taken in again from the story; the buttons still can. */
+const GONE_TURNS = 10;
+function markGone(c, name) {
+    const s = chatState(); if (!s || !c || !name) return;
+    c.gone = (Array.isArray(c.gone) ? c.gone : []).filter(g => g && s.turn - g.turn < GONE_TURNS);
+    c.gone.push({ name: String(name).slice(0, 60), turn: s.turn });
+    if (c.gone.length > 12) c.gone = c.gone.slice(-12);
+}
+function wasGone(c, name) {
+    const s = chatState(); if (!s || !c || !Array.isArray(c.gone)) return false;
+    return c.gone.some(g => g && s.turn - g.turn < GONE_TURNS && alike(g.name, name));
+}
+// which pocket the story means: the name as written first, then in other words
+function pocketIndex(c, n) {
+    const i = c.slots.findIndex(x => same(x.name, n));
+    return i >= 0 ? i : c.slots.findIndex(x => alike(x.name, n));
+}
+// ailments that are one and the same: kept once, with the longer of their days
+function mergeAilments(c) {
+    const out = [];
+    let changed = false;
+    c.ailments.forEach(a => {
+        const was = a && a.name ? out.find(x => alike(x.name, a.name)) : null;
+        if (!was) { out.push(a); return; }
+        changed = true;
+        if (!Number.isFinite(a.days) || (Number.isFinite(was.days) && a.days > was.days)) was.days = a.days;
+    });
+    if (changed) c.ailments = out;
+    return changed;
 }
 function slotCap() { return clamp(parseInt(settings.slotCount, 10) || 5, 1, 8); }
 // a thing from the player's backpack (by name, or the item itself) into the character's pocket
@@ -5365,8 +5429,12 @@ function takeFromPlayer(charName, nameOrItem, quiet = false) {
 // from the character's pocket (or, when the story says so, out of nowhere) into the player's backpack
 function giveToPlayer(charName, nameOrId, quiet = false) {
     const c = charOf(charName); if (!c) return false;
-    const i = c.slots.findIndex(sl => sl.id === nameOrId || same(sl.name, nameOrId));
+    let i = c.slots.findIndex(sl => sl.id === nameOrId);
+    if (i < 0) i = pocketIndex(c, nameOrId);
+    // the story telling again of a hand-over that already happened: nothing is made out of nowhere twice
+    if (i < 0 && quiet && wasGone(c, nameOrId)) return false;
     const slot = i >= 0 ? c.slots.splice(i, 1)[0] : null;
+    if (slot) markGone(c, slot.name);
     const nm = slot ? slot.name : String(nameOrId || '').trim().slice(0, 60);
     if (!nm) return false;
     const v = inv();
@@ -5375,6 +5443,33 @@ function giveToPlayer(charName, nameOrId, quiet = false) {
     toastr.info(t('got', { name: charName, item: nm }));
     if (!quiet) { updateInjection(); refresh(); }
     return true;
+}
+
+/* ---------------- what an intimate scene left on the character: a buff or a debuff for a few replies ----------------
+   Read in the Status Bar's own request (no call of its own), the way RPG Vitals reads it for the player. */
+function liveFx(c) {
+    const s = chatState();
+    if (!settings.intimFx || !c || !s || !Array.isArray(c.fx)) return [];
+    return c.fx.filter(f => f && f.name && Number.isFinite(f.until) && s.turn < f.until);
+}
+function takeFx(c, list) {
+    const s = chatState(); if (!s || !c) return;
+    if (!Array.isArray(c.fx)) c.fx = [];
+    c.fx = c.fx.filter(f => f && Number.isFinite(f.until) && s.turn < f.until);   // the faded ones go
+    (Array.isArray(list) ? list : []).slice(0, 2).forEach(e => {
+        if (!e || typeof e !== 'object') return;
+        const name = String(e.name || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+        if (name.length < 2 || !/\p{L}/u.test(name)) return;
+        const kind = String(e.kind || '').toLowerCase() === 'debuff' ? 'debuff' : 'buff';
+        const turns = clamp(parseInt(e.turns, 10) || 6, 3, 12);
+        const desc = String(e.desc || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+        // the same again (in other words too): it stacks as in RPG Vitals — ×N, the longer of the two, the newest feeling
+        const was = c.fx.find(f => (f.kind === 'debuff' ? 'debuff' : 'buff') === kind && alike(f.name, name));
+        if (was) { was.count = (was.count || 1) + 1; was.until = Math.max(was.until, s.turn + turns); if (desc) was.desc = desc; logIt(c, '♥ ' + was.name + ' ×' + was.count); return; }
+        c.fx.push({ id: genId(), name, kind, desc, until: s.turn + turns, src: 'intimacy' });
+        logIt(c, '♥ ' + name);
+    });
+    if (c.fx.length > 6) c.fx = c.fx.slice(-6);
 }
 
 /* ---------------- today's states: a hangover, a bad night, the adrenaline of a fight ---------------- */
@@ -5420,6 +5515,8 @@ function dcMod(name) {
     m += Math.min(2, c.ailments.length);
     m += Math.min(2, needBits(c).length);
     stateBits(c).forEach(b => { m += b === 'rush' ? -1 : 1; });   // a rush makes them bolder; the rest make it harder
+    // after a night together: a buff eases the checks, a debuff makes them harder — a stack of two or more counts twice
+    liveFx(c).forEach(f => { const n = Math.min(2, f.count || 1); m += f.kind === 'debuff' ? n : -n; });
     return clamp(m, -1, 4);
 }
 
@@ -5459,6 +5556,7 @@ function updateInjection() {
             }
             c.ailments.forEach(a => bits.push(String(a.name).toLowerCase()));
             stateBits(c).forEach(b => bits.push(t('inj_' + b)));
+            liveFx(c).forEach(f => { const nm = f.name.toLowerCase() + (f.count > 1 ? ' ×' + f.count : ''); bits.push(f.desc ? `${nm} — ${f.desc}` : nm); });
             if (settings.slots && c.slots.length) bits.push(t('inj_carry', { list: c.slots.map(x => x.name).join(', ') }));
             if (bits.length) lines.push(`${name}: ${bits.join('; ')}.`);
         });
@@ -5855,10 +5953,10 @@ function paneHtml(name, blockChar) {
         }
     }
     // today's states
-    const sb = stateBits(c);
-    if (sb.length) {
+    const sb = stateBits(c), fx = liveFx(c);
+    if (sb.length || fx.length) {
         const ICON = { hangover: '🍺', sleepless: '😵', rush: '⚡', crash: '🫠', baby: '🍼' };
-        h += `<div class="rbd-states">${sb.map(k => `<span class="rbd-state st-${k}">${ICON[k]} ${esc(t('st_' + k))}</span>`).join('')}</div>`;
+        h += `<div class="rbd-states">${sb.map(k => `<span class="rbd-state st-${k}">${ICON[k]} ${esc(t('st_' + k))}</span>`).join('')}${fx.map(f => `<span class="rbd-state rbd-fx ${f.kind === 'debuff' ? 'debuff' : 'buff'}" data-fx="${esc(f.id)}" title="${esc(f.name + (f.count > 1 ? ' ×' + f.count : '') + (f.desc ? ' — ' + f.desc : ''))}"><i class="rbd-fx-heart" aria-hidden="true">♥</i> ${esc(f.name)}${f.count > 1 ? `<span class="rbd-fx-n">×${f.count}</span>` : ''}<b class="rbd-x" title="${esc(t('remove'))}" role="button" tabindex="0">✕</b></span>`).join('')}</div>`;
     }
     // ailments
     if (settings.ailments) {
@@ -5907,6 +6005,11 @@ function partWord(p) {
 function bindPane(pane, name, container) {
     const repaint = () => { saveChat(); updateInjection(); refresh(); };
     pane.querySelectorAll('.rbd-chip').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); pick[container.getAttribute('data-mesid')] = el.getAttribute('data-who'); paint(container, true); }));
+    pane.querySelectorAll('.rbd-fx .rbd-x').forEach(el => el.addEventListener('click', e => {
+        e.stopPropagation();
+        const c = charOf(name); const id = el.closest('.rbd-fx').getAttribute('data-fx');
+        c.fx = (c.fx || []).filter(f => f.id !== id); repaint();
+    }));
     pane.querySelectorAll('.rbd-ail .rbd-x').forEach(el => el.addEventListener('click', e => {
         e.stopPropagation();
         const c = charOf(name); const id = el.closest('.rbd-ail').getAttribute('data-id');
@@ -5936,7 +6039,7 @@ function bindPane(pane, name, container) {
             pop.querySelectorAll('.rbd-pop-i').forEach(b => b.addEventListener('click', ev => {
                 ev.stopPropagation();
                 if (b.dataset.a === 'back') giveToPlayer(name, el.dataset.id);
-                else { const c = charOf(name); c.slots = c.slots.filter(sl => sl.id !== el.dataset.id); repaint(); }
+                else { const c = charOf(name); const sl0 = c.slots.find(sl => sl.id === el.dataset.id); if (sl0) markGone(c, sl0.name); c.slots = c.slots.filter(sl => sl.id !== el.dataset.id); repaint(); }
             }));
         }
     }));
@@ -6075,7 +6178,7 @@ function settingsHtml() {
             ${chk('rbd-childdesc', t('s_childdesc'))}${chk('rbd-babynights', t('s_babynights'))}</div>`)}
         ${sub(`🤒 ${esc(t('s_ail_h'))}`, `${chk('rbd-ail', t('s_ail'))}<div class="rpg-in">${num('rbd-ailchance', t('s_ailChance'), 'min="0" max="50"')}</div>`)}
         ${sub(`🎒 ${esc(t('s_slots_h'))}`, `${chk('rbd-slots', t('s_slots'))}<div class="rpg-in">${num('rbd-slotcount', t('s_slotCount'), 'min="1" max="8"')}${chk('rbd-itemsself', t('s_items'))}</div>`)}
-        ${sub(`🍺 ${esc(t('s_nights_h'))}`, `${chk('rbd-nights', t('s_nights'))}${chk('rbd-adren', t('s_adren'))}`)}
+        ${sub(`🍺 ${esc(t('s_nights_h'))}`, `${chk('rbd-nights', t('s_nights'))}${chk('rbd-adren', t('s_adren'))}${chk('rbd-intimfx', t('s_intimfx'))}`)}
         ${sub(`🎲 ${esc(t('s_dice_h'))}`, chk('rbd-dice', t('s_dice')))}
         ${sub(`🪄 ${esc(t('s_inj_h'))}`, `${chk('rbd-inject', t('s_inj'))}<div class="rpg-in">${num('rbd-depth', t('s_depth'), 'min="0" max="20"')}</div>`)}`;
 }
@@ -6089,7 +6192,7 @@ function mountSettings() {
     $('#rbd-lang').val(settings.language || '').on('change', function () { settings.language = this.value === 'ru' || this.value === 'en' ? this.value : ''; saveSettings(); mountSettings(); updateInjection(); refresh(); });
     bindC('rbd-enabled', 'enabled'); bindC('rbd-needs', 'needs'); bindC('rbd-cycle', 'cycle'); bindC('rbd-preg', 'pregnancy'); bindC('rbd-hide', 'hidePregnancy');
     bindC('rbd-ail', 'ailments'); bindC('rbd-slots', 'slots'); bindC('rbd-dice', 'dice'); bindC('rbd-inject', 'inject');
-    bindC('rbd-itemsself', 'itemsSelf'); bindC('rbd-nights', 'nights'); bindC('rbd-adren', 'adrenaline');
+    bindC('rbd-itemsself', 'itemsSelf'); bindC('rbd-nights', 'nights'); bindC('rbd-adren', 'adrenaline'); bindC('rbd-intimfx', 'intimFx');
     bindC('rbd-birth', 'birth'); bindC('rbd-childdesc', 'childDesc'); bindC('rbd-babynights', 'babyNights');
     $('#rbd-pregspeed').val(String(pregSpeed())).on('change', function () {
         // what has passed stays counted at the old speed; RPG Vitals counts the player's own up to today too

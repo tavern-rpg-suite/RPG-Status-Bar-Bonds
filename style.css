@@ -1092,6 +1092,13 @@
 .rpg-pane-body .rbd-preg-bar > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f6b26b, #ff9ec7); transition: width .6s ease; }
 .rpg-pane-body .rbd-preg-s { font-size: .74rem; color: #c9b48a; }
 .rpg-pane-body .rbd-state.st-baby { border-color: rgba(129, 199, 255, .45); background: rgba(129, 199, 255, .1); color: #cfe8ff; }
+.rpg-pane-body .rbd-fx { display: inline-flex; align-items: center; gap: 4px; padding-right: 4px; animation: rbd-fx-in .35s ease-out both; }
+.rpg-pane-body .rbd-fx.buff { border-color: rgba(255, 128, 171, .5); background: rgba(255, 128, 171, .12); color: #ffd6e5; }
+.rpg-pane-body .rbd-fx.debuff { border-color: rgba(186, 140, 255, .5); background: rgba(186, 140, 255, .12); color: #e6d6ff; }
+.rpg-pane-body .rbd-fx-heart { font-style: normal; font-size: .72rem; color: #ff80ab; }
+.rpg-pane-body .rbd-fx.debuff .rbd-fx-heart { color: #c9a2ff; }
+@keyframes rbd-fx-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rpg-pane-body .rbd-fx { animation: none; } }
 .rpg-pane-body .rbd-playing { margin: 10px 0 0; color: #ffe0a8; }
 
 /* paper */
@@ -1222,3 +1229,4 @@
 .rpg-pane-body .rbd-nd-x, .rpg-pane-body .rbd-nd-plus { cursor: pointer; padding: 1px 8px; border-radius: 6px; font: inherit; color: #c9b8ff; background: rgba(139, 92, 246, .1); border: 1px solid rgba(139, 92, 246, .35); }
 .rpg-pane-body .rbd-nd-x { color: #ffb0a6; background: rgba(255, 82, 82, .06); border-color: rgba(255, 82, 82, .3); margin-left: auto; }
 .rpg-pane-body .rbd-nd-x:hover, .rpg-pane-body .rbd-nd-plus:hover, .rpg-pane-body .rbd-nd-x:focus-visible, .rpg-pane-body .rbd-nd-plus:focus-visible { background: rgba(139, 92, 246, .26); color: #fff; outline: none; }
+.rpg-pane-body .rbd-fx-n { font-size: .68rem; font-weight: 700; padding: 0 5px; border-radius: 999px; background: rgba(255, 255, 255, .12); color: inherit; }
