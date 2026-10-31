@@ -1230,3 +1230,4 @@
 .rpg-pane-body .rbd-nd-x { color: #ffb0a6; background: rgba(255, 82, 82, .06); border-color: rgba(255, 82, 82, .3); margin-left: auto; }
 .rpg-pane-body .rbd-nd-x:hover, .rpg-pane-body .rbd-nd-plus:hover, .rpg-pane-body .rbd-nd-x:focus-visible, .rpg-pane-body .rbd-nd-plus:focus-visible { background: rgba(139, 92, 246, .26); color: #fff; outline: none; }
 .rpg-pane-body .rbd-fx-n { font-size: .68rem; font-weight: 700; padding: 0 5px; border-radius: 999px; background: rgba(255, 255, 255, .12); color: inherit; }
+.rpg-pane-body .rbd-fx-t { font-style: normal; font-size: .68rem; opacity: .75; }

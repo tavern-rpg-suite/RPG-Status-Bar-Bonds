@@ -4764,7 +4764,7 @@ const I18N = {
         no_backpack: 'Tavern RPG Engine is off — your backpack is not there.', backpack_empty: 'Your backpack is empty.',
         full: '{name} has no free pocket.', gave: '{name} took: {item}', got: '{name} gave you: {item}',
         dice_mod: 'Checks', dice_title: 'How the body moves the relationship checks right now (difficulty)',
-        days: '{n} d', remove: 'Remove',
+        days: '{n} d', fx_left: '{n} replies left', fx_left_s: '{n} r', remove: 'Remove',
         more: 'Body settings', has_cycle: 'Has a cycle', fertile: 'Can have children', fert_roll: 'dice: {r}', len: 'Cycle length', period_len: 'Period days', pain: 'Period pain', set_day: 'Today is cycle day', reroll: 'Roll again',
         sex: 'Body', sex_f: 'female', sex_m: 'male', sex_x: 'other',
         for_who: 'For:', world_pick: 'Whose body:', nobody: 'No one to show yet.',
@@ -4839,7 +4839,7 @@ const I18N = {
         no_backpack: 'Tavern RPG Engine выключен — твоего рюкзака нет.', backpack_empty: 'Твой рюкзак пуст.',
         full: 'У {name} нет свободного кармана.', gave: '{name} взял(а): {item}', got: '{name} отдал(а) тебе: {item}',
         dice_mod: 'Броски', dice_title: 'Как тело сейчас меняет сложность бросков в отношениях',
-        days: '{n} дн.', remove: 'Убрать',
+        days: '{n} дн.', fx_left: 'ещё {n} отв.', fx_left_s: '{n} отв.', remove: 'Убрать',
         more: 'Настройки тела', has_cycle: 'Есть цикл', fertile: 'Может иметь детей', fert_roll: 'кубик: {r}', len: 'Длина цикла', period_len: 'Дней месячных', pain: 'Боль в месячные', set_day: 'Сегодня день цикла', reroll: 'Бросить заново',
         sex: 'Тело', sex_f: 'женское', sex_m: 'мужское', sex_x: 'другое',
         for_who: 'Для:', world_pick: 'Чьё тело:', nobody: 'Пока некого показать.',
@@ -5969,7 +5969,7 @@ function paneHtml(name, blockChar) {
     const sb = stateBits(c), fx = liveFx(c);
     if (sb.length || fx.length) {
         const ICON = { hangover: '🍺', sleepless: '😵', rush: '⚡', crash: '🫠', baby: '🍼' };
-        h += `<div class="rbd-states">${sb.map(k => `<span class="rbd-state st-${k}">${ICON[k]} ${esc(t('st_' + k))}</span>`).join('')}${fx.map(f => `<span class="rbd-state rbd-fx ${f.kind === 'debuff' ? 'debuff' : 'buff'}" data-fx="${esc(f.id)}" title="${esc(f.name + (f.count > 1 ? ' ×' + f.count : '') + (f.desc ? ' — ' + f.desc : ''))}"><i class="rbd-fx-heart" aria-hidden="true">♥</i> ${esc(f.name)}${f.count > 1 ? `<span class="rbd-fx-n">×${f.count}</span>` : ''}<b class="rbd-x" title="${esc(t('remove'))}" role="button" tabindex="0">✕</b></span>`).join('')}</div>`;
+        h += `<div class="rbd-states">${sb.map(k => `<span class="rbd-state st-${k}">${ICON[k]} ${esc(t('st_' + k))}</span>`).join('')}${fx.map(f => `<span class="rbd-state rbd-fx ${f.kind === 'debuff' ? 'debuff' : 'buff'}" data-fx="${esc(f.id)}" title="${esc(f.name + (f.count > 1 ? ' ×' + f.count : '') + (f.desc ? ' — ' + f.desc : ''))}"><i class="rbd-fx-heart" aria-hidden="true">♥</i> ${esc(f.name)}${f.count > 1 ? `<span class="rbd-fx-n">×${f.count}</span>` : ''}<i class="rbd-fx-t" title="${esc(t('fx_left', { n: f.until - s.turn }))}">${esc(t('fx_left_s', { n: f.until - s.turn }))}</i><b class="rbd-x" title="${esc(t('remove'))}" role="button" tabindex="0">✕</b></span>`).join('')}</div>`;
     }
     // ailments
     if (settings.ailments) {
