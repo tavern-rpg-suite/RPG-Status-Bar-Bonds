@@ -2518,8 +2518,22 @@ function parseLenientJSON(content) {
     if (!content) return null;
     const start = content.indexOf('{');
     if (start < 0) return null;
-    const frag = content.slice(start);
-    try { return JSON.parse(frag); } catch (e) { /* repair below */ }
+    // a local model often wraps the answer in ```json … ``` — the closing fence after the object made
+    // the whole answer unreadable ("Could not read the character") although the object itself was fine
+    const frag = content.slice(start).replace(/\s*```\s*$/, '');
+    try { return JSON.parse(frag); } catch (e) { /* the first whole object, then repair below */ }
+    {
+        let s0 = false, e0 = false, d0 = 0;
+        for (let k = 0; k < frag.length; k++) {
+            const ch = frag[k];
+            if (e0) { e0 = false; continue; }
+            if (ch === '\\') { e0 = true; continue; }
+            if (ch === '"') { s0 = !s0; continue; }
+            if (s0) continue;
+            if (ch === '{' || ch === '[') d0++;
+            else if ((ch === '}' || ch === ']') && --d0 === 0) { try { return JSON.parse(frag.slice(0, k + 1)); } catch (e) { break; } }
+        }
+    }
     let inStr = false, esc = false, depth = 0;
     const stack = [];
     for (let k = 0; k < frag.length; k++) {
