@@ -1231,3 +1231,29 @@
 .rpg-pane-body .rbd-nd-x:hover, .rpg-pane-body .rbd-nd-plus:hover, .rpg-pane-body .rbd-nd-x:focus-visible, .rpg-pane-body .rbd-nd-plus:focus-visible { background: rgba(139, 92, 246, .26); color: #fff; outline: none; }
 .rpg-pane-body .rbd-fx-n { font-size: .68rem; font-weight: 700; padding: 0 5px; border-radius: 999px; background: rgba(255, 255, 255, .12); color: inherit; }
 .rpg-pane-body .rbd-fx-t { font-style: normal; font-size: .68rem; opacity: .75; }
+#tbe-body .tbe-archpin { display: inline-flex; align-items: center; gap: 4px; font-size: .78rem; opacity: .85; cursor: pointer; white-space: nowrap; margin: 0; }
+#tbe-body .tbe-archpin input { margin: 0; }
+/* the amounts, folded under the needs; and the bars a GM can click */
+.rbd-amts { margin: 4px 0 2px; }
+.rbd-amts > summary { cursor: pointer; font-size: .9em; opacity: .85; margin: 2px 0 4px; list-style-position: inside; }
+.rpg-pane-body .rbd-need.gm .rbd-need-bar { cursor: crosshair; outline: 1px dashed rgba(255, 255, 255, .28); outline-offset: 2px; }
+
+/* read the card again: a small stamp-coloured button at the end of the archetype line */
+.tbe-arch::after { order: 1; }
+.tbe-rescan {
+    order: 2; flex: none; width: 20px; height: 20px; padding: 0; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(169, 118, 47, .55); background: rgba(255, 250, 238, .7); color: #7a5520;
+    font-size: 9px; cursor: pointer; opacity: .75; transition: opacity .15s ease, transform .25s ease;
+}
+.tbe-rescan:hover, .tbe-rescan:focus-visible { opacity: 1; transform: rotate(90deg); outline: none; box-shadow: 0 0 0 2px rgba(199, 154, 46, .35); }
+@media (prefers-reduced-motion: reduce) { .tbe-rescan { transition: none; } .tbe-rescan:hover { transform: none; } }
+
+/* needs: presets (built in and your own) */
+.rpg-pane-body .rbd-nd-preset { display: flex; align-items: center; gap: 6px; }
+.rpg-pane-body .rbd-nd-psel { flex: 1 1 auto; min-width: 0; }
+.rpg-pane-body .rbd-nd-psave, .rpg-pane-body .rbd-nd-pdel { cursor: pointer; padding: 1px 7px; border-radius: 6px; font: inherit; background: rgba(139, 92, 246, .1); border: 1px solid rgba(139, 92, 246, .35); color: #c9b8ff; }
+.rpg-pane-body .rbd-nd-pdel { color: #ffb0a6; background: rgba(255, 82, 82, .06); border-color: rgba(255, 82, 82, .3); }
+.rpg-pane-body .rbd-nd-pdel:disabled { opacity: .35; cursor: default; }
+.rpg-pane-body .rbd-nds optgroup { color: #9aa3bd; font-style: normal; }
+.rpg-pane-body .rbd-nds option { color: #ccd6f6; background: #1c1f2b; }

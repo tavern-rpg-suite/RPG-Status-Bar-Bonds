@@ -58,7 +58,7 @@ const I18N = {
         toast_no_key: "API key is not set!",
         ui_update_every: "Update every:",
         ui_messages: "messages",
-        ui_inject_depth: "Injection depth:",
+        ui_inject_depth: "Injection depth:", ui_inchat: "Insert in chat", ui_depth_off: "Works with \"Insert in chat\"",
         ui_inject_depth_title: "How deep to inject the character status into the prompt (0 = at the very end)",
         ui_stat_config: "📊 Stat configuration",
         ui_edit_for: "Edit stats for:",
@@ -205,7 +205,7 @@ const I18N = {
         toast_no_key: "API-ключ не указан!",
         ui_update_every: "Обновлять каждые:",
         ui_messages: "сообщений",
-        ui_inject_depth: "Глубина внедрения:",
+        ui_inject_depth: "Глубина внедрения:", ui_inchat: "Вставлять в чат", ui_depth_off: "Работает с «Вставлять в чат»",
         ui_inject_depth_title: "Насколько глубоко внедрять статус в промпт (0 = в самый конец)",
         ui_stat_config: "📊 Настройка статов",
         ui_edit_for: "Редактировать статы для:",
@@ -364,6 +364,7 @@ const defaultSettings = {
     temperature: 0.8,
     updateFrequency: 5,
     injectDepth: 0,
+    inChat: false,               // off: the status goes to the top of the prompt, as always; on: into the chat at the depth (a local model then re-reads only the end)
     injectContext: true,
     influenceReply: true,   // MERGED: the live-state directive at depth 0
     sceneOnly: true,        // the model hears only of those in the scene, not of the whole group
@@ -990,7 +991,12 @@ async function processCharacterStatus(messageId, charName, forceUpdate = false) 
         return;
     }
 
+    // ↻ on the newest reply reads it again from scratch: what that reply changed (the Character tab, the
+    // pockets, the backpack, these values) is taken back first, so the new reading replaces it, not adds to it
+    if (forceUpdate && typeof window.__rpgsbTurnRedo === 'function') { try { window.__rpgsbTurnRedo(messageId); } catch (e) { console.warn('[RPG Status Bar] redo', e); } }
     renderInlineStatus(messageId, charName, null, true, false);
+    // a swipe or a regeneration while the model thinks: the answer is about a text no longer on screen
+    const myText = msg.mes, mySwipe = msg.swipe_id;
     const myChat = context.chatId;   // message ids overlap between chats: a result arriving after a
                                      // switch used to paint the OLD chat's status onto the NEW chat's
                                      // message with the same number, and save into the wrong chat file
@@ -1001,11 +1007,15 @@ async function processCharacterStatus(messageId, charName, forceUpdate = false) 
         // the Character tab reads only what is new since the last update: the line marks where that starts
         let bodyOn = false;
         try { bodyOn = BODY.on(); } catch (e) { bodyOn = false; }
-        const newFrom = forceUpdate ? messageId : Math.max(startIdx, messageId - Math.max(1, settings.updateFrequency) + 1);
+        let newFrom = forceUpdate ? messageId : Math.max(startIdx, messageId - Math.max(1, settings.updateFrequency) + 1);
+        // your own message right before the reply is new too: "we ate and slept", written by you, used to sit
+        // above the mark, so the Character tab never heard of it
+        while (newFrom - 1 >= startIdx && chat[newFrom - 1] && chat[newFrom - 1].is_user) newFrom--;
         const historyText = historySlice.map(m => `${bodyOn && chat.indexOf(m) === newFrom ? '=== NEW ===\n' : ''}${m.name}: ${m.mes}`).join('\n\n');
 
         const result = await calculateNewStats(historyText, charName);
         if (getContext().chatId !== myChat) return;   // chat changed while the AI was thinking
+        if (getContext().chat[messageId] !== msg || msg.mes !== myText || msg.swipe_id !== mySwipe) return;   // swiped meanwhile
 
         const deltas = {};
         if (result.stats) {
@@ -1036,6 +1046,7 @@ async function processCharacterStatus(messageId, charName, forceUpdate = false) 
 
         renderInlineStatus(messageId, charName, snapshotData);
         updateContextInjection();
+        if (forceUpdate && typeof window.__rpgsbTurnKept === 'function') { try { window.__rpgsbTurnKept(messageId); } catch (e) { /* kept later */ } }
 
     } catch (e) {
         console.error(`Status Update Failed for ${charName}:`, e);
@@ -1097,6 +1108,8 @@ function buildStatusDirective() {
     return `[${t('inj_head')}]\n${lines.join('\n')}\n[${t('inj_rule')}]`;
 }
 
+// where the status goes: the top of the prompt (as always), or the chat at its depth
+function injPos() { return settings.inChat ? 1 : 2; }
 function updateContextInjection() {
     if (!settings.enabled || !settings.injectContext) {
         setExtensionPrompt(PROMPT_KEY, '', 0, 0, false);
@@ -1120,14 +1133,14 @@ function updateContextInjection() {
         injectionText += `${char.name}: ${p.summary}${linked ? ` (${linked})` : ''}\n`;
     });
 
-    setExtensionPrompt(PROMPT_KEY, noted ? injectionText : '', 2, settings.injectDepth, false, extension_prompt_roles.SYSTEM);
+    setExtensionPrompt(PROMPT_KEY, noted ? injectionText : '', injPos(), settings.injectDepth, false, extension_prompt_roles.SYSTEM);
 
     let directive = '';
     if (settings.influenceReply) {
         try { directive = buildStatusDirective(); }
         catch (e) { console.error('[RPG Status Bar] directive failed:', e); directive = ''; }
     }
-    setExtensionPrompt(PROMPT_KEY_LIVE, directive, 2, 0, false, extension_prompt_roles.SYSTEM);
+    setExtensionPrompt(PROMPT_KEY_LIVE, directive, injPos(), 0, false, extension_prompt_roles.SYSTEM);
 }
 
 // === IMPORT / EXPORT (per character; file carries the full profile) ===
@@ -1234,7 +1247,8 @@ function buildSettingsHtml() {
                 <div class="rpg-srow rpg-in"><label for="rpg-scene-n">${t('ui_scene_n')}</label><input type="number" id="rpg-scene-n" class="text_pole" min="2" max="40"></div>
                 <label class="checkbox_label" title="${t('ui_per_chat_title')}"><input type="checkbox" id="rpg-per-chat"> <span>${t('ui_per_chat')}</span></label>
                 <div class="rpg-srow"><label for="rpg-freq">${t('ui_update_every').replace(/:\s*$/, '')}, ${t('ui_messages')}</label><input type="number" id="rpg-freq" class="text_pole" min="1" max="15"></div>
-                <div class="rpg-srow" title="${t('ui_inject_depth_title')}"><label for="rpg-inject-depth">${t('ui_inject_depth').replace(/:\s*$/, '')}</label><input type="number" id="rpg-inject-depth" class="text_pole" min="0" max="100"></div>`)}
+                <div class="rpg-srow" title="${t('ui_inject_depth_title')}"><label for="rpg-inject-depth">${t('ui_inject_depth').replace(/:\s*$/, '')}</label><input type="number" id="rpg-inject-depth" class="text_pole" min="0" max="100"></div>
+                <label class="checkbox_label"><input type="checkbox" id="rpg-inchat"> <span>${t('ui_inchat')}</span></label>`)}
             ${sub(t('ui_stat_config'), `<div id="rpg-dynamic-stats-container"></div>`)}
 `;
 }
@@ -1467,6 +1481,10 @@ function mountSettings() {
     $('#rpg-model').val(settings.model).on('input', function () { settings.model = $(this).val(); saveSettings(); });
     $('#rpg-freq').val(settings.updateFrequency).on('change', function () { settings.updateFrequency = Math.max(1, parseInt($(this).val()) || 5); $(this).val(settings.updateFrequency); saveSettings(); });
     $('#rpg-inject-depth').val(settings.injectDepth).on('change', function () { settings.injectDepth = Math.max(0, parseInt($(this).val()) || 0); $(this).val(settings.injectDepth); saveSettings(); updateContextInjection(); });
+    // the depth only means something in the chat: at the top of the prompt SillyTavern ignores it
+    const depthLock = () => $('#rpg-inject-depth').css('opacity', settings.inChat ? '' : '0.55').attr('title', settings.inChat ? t('ui_inject_depth_title') : t('ui_depth_off'));
+    $('#rpg-inchat').prop('checked', !!settings.inChat).on('change', function () { settings.inChat = this.checked; saveSettings(); depthLock(); updateContextInjection(); });
+    depthLock();
     $('#rpg-inject-context').prop('checked', settings.injectContext).on('change', function () { settings.injectContext = this.checked; saveSettings(); updateContextInjection(); });
     $('#rpg-influence').prop('checked', settings.influenceReply).on('change', function () { settings.influenceReply = this.checked; saveSettings(); updateContextInjection(); });
     $('#rpg-scene-only').prop('checked', settings.sceneOnly !== false).on('change', function () { settings.sceneOnly = this.checked; saveSettings(); updateContextInjection(); });
@@ -1558,6 +1576,14 @@ const SB_API = {
     updateContextInjection, observeChat, restoreStatusesOnLoad,
     scheduleReconcile, refreshCastIfChanged, processCharacterStatus, renderInlineStatus,
     resetCast: () => { lastCastKey = ''; },
+    // swipes: one character's values before a reply, and back
+    snapProfile: (name) => { if (!settings.enabled || !name) return null; const p = getProfile(name); return JSON.parse(JSON.stringify({ stats: p.stats, summary: p.summary, msgCount: p.msgCount })); },
+    restoreProfile: (name, snap) => {
+        if (!snap || !Array.isArray(snap.stats)) return;
+        const p = getProfile(name);
+        p.stats = JSON.parse(JSON.stringify(snap.stats)); p.summary = snap.summary; p.msgCount = Number(snap.msgCount) || 0;
+        refreshLinkedStats(p); saveSettings(); updateContextInjection();
+    },
     // plain text through the Status Bar's own connection (the Character tab's newborn note uses it)
     hasKey: () => !!apiKey(),
     aiText: async (system, user, maxTokens = 400) => {
@@ -1601,6 +1627,7 @@ const defaultSettings = {
     temperature: 0.2,            // classification wants determinism, not flair
     language: 'en',
     injectDepth: 1,              // depth of the profile block; verdict always lands at 0
+    inChat: false,               // off: the profile, verdict and prose guard go to the top of the prompt, as always; on: into the chat (profile at its depth, the rest at 0)
     autoProfile: true,           // build traits from the character card on first meeting
     classify: true,              // read player intent with the secondary model
     proseGuard: true,            // inject the NATURAL HUMAN PROSE rules
@@ -1706,7 +1733,7 @@ const I18N = {
         set_enable: 'Enable module', set_lang: 'Language:',
         sec_conn: 'Connection', sec_checks: 'Checks and dice', sec_init: 'Initiative', sec_court: 'Courtship', sec_prose: 'Prose', sec_roster: 'Who is on the page', sec_prompt: 'Main model', sec_gm: 'Game master',
         set_url: 'URL', set_key: 'API Key', set_model: 'Model',
-        set_depth: 'Profile injection depth:',
+        set_depth: 'Profile injection depth:', set_inchat: 'Insert in chat', set_depth_off: 'Works with "Insert in chat"',
         set_autoprofile: 'Build traits from the character card automatically',
         set_classify: 'Read player intent with the secondary model',
         set_prose: 'Inject the natural-prose writing rules',
@@ -1719,6 +1746,7 @@ const I18N = {
         set_pace: 'Relationship pace:',
         hint_pace: 'Scales how fast warmth accumulates — gains only, damage is untouched. 100% is a long arc of several hundred messages to Girlfriend; 200% roughly halves it.',
         set_gm: 'GM / edit mode',
+        gm_arch_pin: 'In every chat', gm_arch_pin_t: 'Keep this archetype (and its traits) for this character in every chat — no new guess from the card', gm_arch_pinned: '{name}: the archetype is kept in every chat.', gm_arch_unpinned: '{name}: the archetype is guessed per chat again.',
         gm_arch: 'Archetype:', gm_arch_card: 'GM: set the archetype by hand — traits are reset to match it',
         gm_arch_set: '{name} is now {arch}.',
         gm_gender: 'Gender:', g_f: 'Female', g_m: 'Male',
@@ -1798,6 +1826,7 @@ const I18N = {
         toast_classify_off: 'The classifier is not answering — pausing intent detection for 10 turns.',
         toast_classify_on: 'The classifier is answering again.',
         btn_reroll: 'Rewrite the page', btn_forget: 'Tear out', btn_close: 'Close',
+        rescan_t: 'Read the card again: archetype and character', rescan_q: 'Read {name}\'s card again? The archetype and the character scores are set anew; what happened between you stays.', rescan_wait: 'Reading {name}\'s card…',
         gm_stage: 'Stage:', gm_hint: 'GM mode: click a bar to set a value.',
         // --- prompt-side vocabulary (this is what the main model actually reads) ---
         p_check: 'CHECK',
@@ -1847,7 +1876,7 @@ const I18N = {
         set_enable: 'Включить модуль', set_lang: 'Язык:',
         sec_conn: 'Подключение', sec_checks: 'Проверки и кубики', sec_init: 'Инициатива', sec_court: 'Ухаживание', sec_prose: 'Проза', sec_roster: 'Кто в альбоме', sec_prompt: 'Основная модель', sec_gm: 'Мастер игры',
         set_url: 'URL', set_key: 'API-ключ', set_model: 'Модель',
-        set_depth: 'Глубина вставки профиля:',
+        set_depth: 'Глубина вставки профиля:', set_inchat: 'Вставлять в чат', set_depth_off: 'Работает с «Вставлять в чат»',
         set_autoprofile: 'Собирать характер из карточки персонажа автоматически',
         set_classify: 'Определять намерение игрока вторичной моделью',
         set_prose: 'Вставлять правила живой прозы',
@@ -1860,6 +1889,7 @@ const I18N = {
         set_pace: 'Темп отношений:',
         hint_pace: 'Ускоряет накопление тепла — только рост, урон не затрагивается. 100% — длинная дуга в несколько сотен сообщений до «девушки», 200% сокращает её примерно вдвое.',
         set_gm: 'GM / режим редактирования',
+        gm_arch_pin: 'Во всех чатах', gm_arch_pin_t: 'Оставить этот архетип (и его черты) за персонажем во всех чатах — без новой догадки по карточке', gm_arch_pinned: '{name}: архетип закреплён во всех чатах.', gm_arch_unpinned: '{name}: архетип снова определяется в каждом чате.',
         gm_arch: 'Архетип:', gm_arch_card: 'ГМ: задать архетип вручную — черты подстроятся под него',
         gm_arch_set: '{name} теперь {arch}.',
         gm_gender: 'Пол:', g_f: 'Женский', g_m: 'Мужской',
@@ -1939,6 +1969,7 @@ const I18N = {
         toast_classify_off: 'Классификатор не отвечает — пропускаю определение действий на 10 ходов.',
         toast_classify_on: 'Классификатор снова отвечает.',
         btn_reroll: 'Переписать страницу', btn_forget: 'Вырвать', btn_close: 'Закрыть',
+        rescan_t: 'Перечитать карточку: архетип и характер', rescan_q: 'Перечитать карточку {name}? Архетип и черты характера определятся заново; то, что было между вами, останется.', rescan_wait: 'Читаю карточку {name}…',
         gm_stage: 'Стадия:', gm_hint: 'GM-режим: кликни по полосе, чтобы задать значение.',
         p_check: 'ПРОВЕРКА',
         p_vs: 'против DC',
@@ -2213,6 +2244,13 @@ function freshState() {
     return { npcs: {}, active: null, turn: 0, lastReplyTurn: -1, verdict: null, soloPaused: false, dismissed: {}, proseLog: {}, version: 1 };
 }
 
+function pinArch(npc, on) {
+    if (!settings.pinnedArch || typeof settings.pinnedArch !== 'object') settings.pinnedArch = {};
+    const k = nameKey(npc.name); if (!k || k === '__proto__' || k === 'constructor' || k === 'prototype') return;
+    if (on) settings.pinnedArch[k] = { archetype: npc.archetype, traits: clone(npc.traits), gender: npc.gender };
+    else delete settings.pinnedArch[k];
+    saveSettings();
+}
 function freshNpc(name, traits, archetype) {
     const tr = traits || clone(ARCHETYPES.pragmatist);
     return {
@@ -2549,14 +2587,32 @@ function chatCards() {
     return out;
 }
 
+/* The card is already in memory; there is no reason to spend a request finding it.
+   It used to be cut at 2500 characters with the description first — on a long card the personality,
+   which is what the scores are about, was never read, and the model answered "pragmatist". Now the
+   personality comes first and the budget is larger; the description's tail is what gets cut. */
+const CARD_BUDGET = 8000;
 function cardTextFor(name) {
-    // The card is already in memory; there is no reason to spend a request finding it.
     try {
         const c = cardFor(name);
         if (!c) return '';
-        const parts = [c.name, c.description, c.personality, c.scenario].filter(Boolean).join('\n');
-        return parts.slice(0, 2500);
+        const head = [c.name, c.personality].filter(Boolean).join('\n');
+        const tail = c.scenario ? '\n' + c.scenario : '';
+        const room = Math.max(0, CARD_BUDGET - head.length - Math.min(tail.length, 1200) - 2);
+        const desc = c.description ? '\n' + String(c.description).slice(0, room) : '';
+        return (head + desc + tail.slice(0, 1200)).slice(0, CARD_BUDGET);
     } catch (e) { return ''; }
+}
+// SillyTavern can keep big libraries "shallow": the card's text is not loaded until the card is
+// opened. A character met in the story but not opened read as an empty card — and stayed a pragmatist.
+async function loadCard(name) {
+    try {
+        const c = cardFor(name);
+        if (!c || !c.shallow) return;
+        const ctx = getContext();
+        const i = (ctx.characters || []).indexOf(c);
+        if (i >= 0 && typeof ctx.unshallowCharacter === 'function') await ctx.unshallowCharacter(String(i));
+    } catch (e) { console.warn('[Bonds] card load', e); }
 }
 
 // Guessing from the card costs nothing and is right far more often than a default.
@@ -2576,20 +2632,47 @@ function guessGender(text) {
     return null;
 }
 
-async function buildProfile(npc) {
+/* An archetype pinned to a character (GM mode, "in every chat"): the same in each new chat,
+   with the traits it was pinned with. No model call is made for a pinned character. */
+function pinOf(name) { const p0 = settings.pinnedArch && settings.pinnedArch[nameKey(name)]; return p0 && ARCHETYPES[p0.archetype] ? p0 : null; }
+function applyPin(npc) {
+    const p0 = pinOf(npc.name); if (!p0) return false;
+    npc.archetype = p0.archetype;
+    npc.traits = Object.assign(clone(ARCHETYPES[p0.archetype]), p0.traits || {});
+    if (p0.gender === 'm' || p0.gender === 'f') npc.gender = p0.gender;
+    return true;
+}
+/* The archetype nearest to a set of scores. "Pragmatist" sits in the middle of the scale and
+   the list puts it first, so a model that is unsure (a small local one especially) answers it
+   for any calm character. When the model says pragmatist but its own scores lie nearer another
+   archetype, the scores decide. */
+function nearestArch(tr) {
+    let best = 'pragmatist', bd = Infinity;
+    for (const [a, prof] of Object.entries(ARCHETYPES)) {
+        let d = 0; for (const k of TRAITS) d += Math.pow((+tr[k] || 0) - prof[k], 2);
+        if (d < bd) { bd = d; best = a; }
+    }
+    return best;
+}
+async function buildProfile(npc, opts = {}) {
     if (npc.profiled) return;
     npc.profiled = true;                         // claim it now: a second reply must not fire a second request
-    if (!settings.autoProfile || !hasKey()) return;
+    if (!opts.force && applyPin(npc)) { saveState(true); renderAlbum(); updateInjections(); return; }
+    if (!opts.force && !settings.autoProfile) return;
+    if (!hasKey()) { if (opts.force) toastr.warning(t('toast_profile_err')); return; }
     /* The chat this profile is being built FOR. The request can take twenty seconds on
        a reasoning model, and if the chat is switched meanwhile the answer would be
        written into an npc object belonging to a chat nobody is looking at — and would
        redraw the album of the one they are. */
     const myChat = currentChatId;
 
+    await loadCard(npc.name);
+    if (myChat !== currentChatId) { npc.profiled = false; return; }
     const card = cardTextFor(npc.name);
     const guess = guessGender(card || npc.name);
     if (guess) npc.gender = guess;
-    if (!card) return;
+    // no card text (yet): not marked done for good — the next reply tries again
+    if (!card) { npc.profiled = false; return; }
     try {
         /* Raised from 300. The answer itself is about fifty tokens, so 300 looked
            generous — but a reasoning model spends its budget thinking BEFORE it
@@ -2603,7 +2686,9 @@ async function buildProfile(npc) {
            The two classifiers below are deliberately NOT raised: they run on every
            message behind a 9-second timeout, and a bigger allowance there would just
            mean waiting for something that gets thrown away. */
-        const res = await callAI(PROFILE_SYS, card, 5000);
+        // A local model (KoboldCpp, LM Studio, Ollama) keeps the answer's budget out of its context: 5000
+        // there left little room for the card and the instructions, and the start of the request was cut.
+        const res = await callAI(PROFILE_SYS, card, isLocalEndpoint(apiConf().url) ? 1200 : 5000);
         if (myChat !== currentChatId) {
             // Left this chat while waiting. The flag is handed back so the profile is
             // built properly the next time this character comes up, instead of being
@@ -2613,11 +2698,16 @@ async function buildProfile(npc) {
         }
         const g = String(res.gender || '').toLowerCase();
         if (g === 'm' || g === 'f') npc.gender = g;
-        const arch = String(res.archetype || '').toLowerCase();
+        let arch = String(res.archetype || '').toLowerCase();
         const base = ARCHETYPES[arch] ? clone(ARCHETYPES[arch]) : clone(ARCHETYPES.pragmatist);
         for (const k of TRAITS) if (Number.isFinite(+res[k])) base[k] = clamp(+res[k], 0, 100);
+        const scored = TRAITS.filter(k => Number.isFinite(+res[k])).length >= 6;
+        // neither an archetype nor scores came back: that is no answer — not a pragmatist
+        if (!scored && !ARCHETYPES[arch]) throw new Error('no profile in the answer');
+        if (scored && (arch === 'pragmatist' || !ARCHETYPES[arch])) arch = nearestArch(base);
         npc.archetype = ARCHETYPES[arch] ? arch : npc.archetype;
         npc.traits = base;
+        if (opts.force && pinOf(npc.name)) pinArch(npc, true);   // read again by hand: a pinned one takes the new reading
         saveState(true);
         renderAlbum();
         updateInjections();
@@ -3716,11 +3806,13 @@ function mapSolo() {
 }
 
 function clearInjections() {
-    setExtensionPrompt(KEY_PROFILE, '', 2, 1, false, extension_prompt_roles.SYSTEM);
-    setExtensionPrompt(KEY_VERDICT, '', 2, 0, false, extension_prompt_roles.SYSTEM);
-    setExtensionPrompt(KEY_PROSE, '', 2, 0, false, extension_prompt_roles.SYSTEM);
+    setExtensionPrompt(KEY_PROFILE, '', injPos(), 1, false, extension_prompt_roles.SYSTEM);
+    setExtensionPrompt(KEY_VERDICT, '', injPos(), 0, false, extension_prompt_roles.SYSTEM);
+    setExtensionPrompt(KEY_PROSE, '', injPos(), 0, false, extension_prompt_roles.SYSTEM);
 }
 
+// where the profile, verdict and prose guard go: the top of the prompt (as always), or the chat
+function injPos() { return settings.inChat ? 1 : 2; }
 function updateInjections() {
     // Wandering alone injects nothing at all: a profile block describing someone
     // who is not there is noise the model will try to use.
@@ -3735,9 +3827,9 @@ function updateInjections() {
     // costs the player a little context; a stale one rewrites their story.
     const safe = (fn) => { try { return fn() || ''; } catch (e) { console.error('[Bonds] block failed:', e); return ''; } };
     const profile = safe(buildProfileText), verdict = safe(buildVerdictText);
-    setExtensionPrompt(KEY_PROFILE, profile, 2, depth + 1, false, extension_prompt_roles.SYSTEM);
-    setExtensionPrompt(KEY_VERDICT, verdict, 2, 0, false, extension_prompt_roles.SYSTEM);
-    setExtensionPrompt(KEY_PROSE, settings.proseGuard ? PROSE_RULES : '', 2, 0, false, extension_prompt_roles.SYSTEM);
+    setExtensionPrompt(KEY_PROFILE, profile, injPos(), depth + 1, false, extension_prompt_roles.SYSTEM);
+    setExtensionPrompt(KEY_VERDICT, verdict, injPos(), 0, false, extension_prompt_roles.SYSTEM);
+    setExtensionPrompt(KEY_PROSE, settings.proseGuard ? PROSE_RULES : '', injPos(), 0, false, extension_prompt_roles.SYSTEM);
     dbg('injected', { profile, verdict, proseGuard: !!settings.proseGuard, depth });
 }
 
@@ -4034,7 +4126,7 @@ function npcPageHtml(npc) {
             <span class="tbe-page-name">${escapeHtml(npc.name)}</span>
             ${stageStamp(npc)}
         </div>
-        ${archName ? `<div class="tbe-arch"><span class="tbe-arch-label">${escapeHtml(t('arch_label'))}</span><b>${escapeHtml(archName)}</b></div>` : ''}
+        ${archName ? `<div class="tbe-arch"><span class="tbe-arch-label">${escapeHtml(t('arch_label'))}</span><b>${escapeHtml(archName)}</b><button type="button" class="tbe-rescan" title="${escapeHtml(t('rescan_t'))}" aria-label="${escapeHtml(t('rescan_t'))}"><i class="fa-solid fa-rotate-right"></i></button></div>` : ''}
         <div class="tbe-traits">${words.length
         ? words.map(w => `<span class="tbe-trait"><i class="tbe-seal-dot"></i>${escapeHtml(w)}</span>`).join('')
         : `<span class="tbe-trait tbe-trait-wait"><i class="tbe-seal-dot"></i>${escapeHtml(t('no_profile'))}</span>`}</div>
@@ -4054,6 +4146,7 @@ function npcPageHtml(npc) {
         html += `<div class="tbe-archpick" title="${escapeHtml(t('gm_arch_card'))}">
             <span class="tbe-gender-label">${escapeHtml(t('gm_arch'))}</span>
             <select class="tbe-arch-sel">${opts}</select>
+            <label class="tbe-archpin" title="${escapeHtml(t('gm_arch_pin_t'))}"><input type="checkbox" class="tbe-arch-pin"${pinOf(npc.name) ? ' checked' : ''}> 📌 ${escapeHtml(t('gm_arch_pin'))}</label>
         </div>`;
     }
 
@@ -4345,8 +4438,15 @@ function bindPageEvents() {
         if (!ARCHETYPES[a]) return;
         npc.archetype = a;
         npc.traits = clone(ARCHETYPES[a]);
+        if (pinOf(npc.name)) pinArch(npc, true);          // a pinned one follows the change
         saveState(true); renderAlbum(); updateInjections();
         toastr.success(t('gm_arch_set', { name: npc.name, arch: gform(t('arch_' + a), npc.gender) }));
+    });
+
+    $('#tbe-body .tbe-rescan').off('click.tbe').on('click.tbe', async function (e) { e.stopPropagation(); await rescanProfile(npc); });
+    $('#tbe-body .tbe-arch-pin').off('change.tbe').on('change.tbe', function () {
+        pinArch(npc, this.checked);
+        toastr.success(t(this.checked ? 'gm_arch_pinned' : 'gm_arch_unpinned', { name: npc.name }));
     });
 
     $('#tbe-body .tbe-chip').off('click.tbe').on('click.tbe', function () {
@@ -4518,7 +4618,8 @@ function settingsHtml() {
                 ${hint('hint_solo')}`)}
             ${sub(`🪄 ${t('sec_prompt')}`, `
                 ${num('tbe-events', 'set_events', 'min="0" max="10"')}
-                ${num('tbe-depth', 'set_depth', 'min="0" max="12"')}`)}
+                ${num('tbe-depth', 'set_depth', 'min="0" max="12"')}
+                ${chk('tbe-inchat', 'set_inchat')}`)}
             ${sub(`🛠️ ${t('sec_gm')}`, `
                 ${chk('tbe-gm', 'set_gm')}
                 ${chk('tbe-debug', 'set_debug')}`)}
@@ -4580,6 +4681,10 @@ function setupUI() {
     bindNum('#tbe-difficulty', 'difficulty', 25, 300);
     bindNum('#tbe-pace', 'pace', 25, 400);
     bindNum('#tbe-depth', 'injectDepth', 0, 12);
+    // the depth only means something in the chat: at the top of the prompt SillyTavern ignores it
+    const depthLock = () => $('#tbe-depth').css('opacity', settings.inChat ? '' : '0.55').attr('title', settings.inChat ? '' : t('set_depth_off'));
+    bindCheck('#tbe-inchat', 'inChat', () => { depthLock(); updateInjections(); });
+    depthLock();
     bindNum('#tbe-events', 'promptEvents', 0, 10);
     $('#tbe-defgender').val(settings.defaultGender === 'm' ? 'm' : 'f').on('change', function () {
         settings.defaultGender = $(this).val() === 'm' ? 'm' : 'f'; saveSettings();
@@ -4651,6 +4756,24 @@ window.BONDS.relations = {
 /* ---- what the Bonds closure hands to the host ---- */
 // Two actions live only inside the album's own click handlers; they are lifted into
 // named functions here so the inline copy calls exactly the same code, unchanged.
+// "Read the card again": asked once, then the archetype and the character's scores come from the card anew.
+// What happened between you two (disposition, stage, history) is not touched.
+async function rescanProfile(npc) {
+    if (!npc) return;
+    const ctx = getContext();
+    let yes = false;
+    try {
+        // the popup takes markup: the name goes in escaped
+        if (typeof ctx.callGenericPopup === 'function' && ctx.POPUP_TYPE) yes = !!(await ctx.callGenericPopup(t('rescan_q', { name: escapeHtml(npc.name) }), ctx.POPUP_TYPE.CONFIRM));
+        else yes = window.confirm(t('rescan_q', { name: npc.name }));
+    } catch (e) { yes = false; }
+    if (!yes) return;
+    npc.profiled = false;
+    toastr.info(t('rescan_wait', { name: npc.name }));
+    await buildProfile(npc, { force: true });
+    renderAlbum();
+    try { window.RPGSB_BONDS_REFRESH && window.RPGSB_BONDS_REFRESH(); } catch (e) { /* no blocks */ }
+}
 async function rerollProfile(npc) {
     npc.profiled = false;
     await buildProfile(npc);
@@ -4671,7 +4794,17 @@ const TBE_API = {
     settings: () => settings,
     state: () => state,
     npcFor: (name) => { try { return (state && state.npcs) ? (state.npcs[nameKey(name)] || null) : null; } catch (e) { return null; } },
-    npcPageHtml, toggleMilestone, rerollProfile, forgetNpc, readCharProse,
+    npcPageHtml, toggleMilestone, rerollProfile, rescanProfile, forgetNpc, readCharProse,
+    // the archetype set by hand (GM), and kept for a character in every chat
+    setArch: (npc, a) => {
+        if (!npc || !ARCHETYPES[a]) return false;
+        npc.archetype = a; npc.traits = clone(ARCHETYPES[a]);
+        if (pinOf(npc.name)) pinArch(npc, true);
+        saveState(true); updateInjections(); renderAlbum();
+        toastr.success(t('gm_arch_set', { name: npc.name, arch: gform(t('arch_' + a), npc.gender) }));
+        return true;
+    },
+    pinArch: (npc, on) => { if (!npc) return; pinArch(npc, !!on); toastr.success(t(on ? 'gm_arch_pinned' : 'gm_arch_unpinned', { name: npc.name })); },
     saveState, updateInjections, renderAlbum, renderMainUI, ensureButton,
     loadSettings, pruneOldStates, loadState, setupUI,
     freshState: () => { state = freshState(); },
@@ -4719,6 +4852,12 @@ const defaultSettings = {
     language: '',           // '' = as the Status Bar
     needs: true,            // satiety, water, strength — wear down with the story's time
     needsSpeed: 100,        // %
+    // how much a part of the day takes, and what the story gives back or takes (the old fixed numbers are the defaults)
+    amtSat: 18, amtEng: 9, amtEngNight: 22, amtHyg: 8,
+    amtAte: 55, amtDrank: 15, amtSlept: 92, amtDirty: 15, amtWore: 30, amtDrained: 40,
+    gm: false,              // GM mode: the needs are set by hand with a click on their bar
+    offscreen: true,        // off screen they see to their own needs (eat, sleep, wash) without it being written
+    fxMax: 3,               // at most this many effects after intimacy at once (the oldest gives way)
     partEvery: 8,           // with no Scene Card clock: a new part of the day every N replies
     cycle: true,            // the menstrual cycle of the characters who have one
     pregnancy: false,       // a chance of pregnancy after an intimate scene — off until asked for
@@ -4753,6 +4892,10 @@ const I18N = {
         tab: 'Character',
         sat: 'Satiety', hyd: 'Water', eng: 'Strength', hyg: 'Hygiene',
         dirty: 'has not washed in a while', own_low: '{n} is running out',
+        np_pick: 'Preset…', np_pick_t: 'A set of needs for a kind of being: choosing one applies it to this character', np_built: 'Built in', np_mine: 'Yours', np_save: 'Keep these needs as your own preset', np_del: 'Delete the chosen preset of yours',
+        np_save_q: 'A name for the preset:', np_saved: 'Preset “{preset}” kept.', np_deleted: 'Preset “{preset}” deleted.', np_applied: '{name}: needs of “{preset}”.',
+        np_human: 'Human', np_vampire: 'Vampire', np_angel: 'Angel', np_demon: 'Demon', np_werewolf: 'Werewolf', np_android: 'Android', np_fae: 'Fae', np_ghost: 'Ghost', np_mage: 'Mage',
+        np_need_blood: 'Blood', np_need_grace: 'Grace', np_need_faith: 'Faith', np_need_fear: 'Fear', np_need_contracts: 'Contracts', np_need_moon: 'Moon', np_need_hunt: 'Hunt', np_need_charge: 'Charge', np_need_service: 'Maintenance', np_need_nature: 'Nature', np_need_mischief: 'Mischief', np_need_memory: 'Memory', np_need_mana: 'Mana',
         needs_h: 'Needs', need_add: 'Add a need', need_name_ph: 'Blood, coffee…', need_icon_ph: '✦', rate: 'Wears down', rate_slow: 'slowly', rate_mid: 'normally', rate_fast: 'fast', need_del: 'Remove the need',
         hungry: 'hungry', very_hungry: 'starving', thirsty: 'thirsty', exhausted: 'exhausted', tired: 'tired',
         ph_period: 'Period', ph_follicular: 'Calm days', ph_ovulation: 'Ovulation', ph_luteal: 'Second half', ph_pms: 'Before the period',
@@ -4774,6 +4917,8 @@ const I18N = {
         pill: 'Takes the pill', preg_end: 'The pregnancy is over', protected_by: 'Protected: {what}', condom_used: '{who} used a condom ({from})', from_pocket: 'from {name}\'s pocket', from_bag: 'from your backpack',
         what_condom: 'a condom', what_pill: 'the pill', what_story: 'contraception in the scene',
         s_enable: 'Enable the Character tab', s_needs_h: 'Needs', s_needs: 'Satiety, strength, hygiene and the needs of their own wear down with the story\'s time (which ones: in each character\'s body settings)',
+        s_gm: 'GM mode: set the needs by hand (click a bar)', s_offscreen: 'Off screen they see to their own needs (eat, sleep, wash) — nothing is written about it', s_fxmax: 'At most this many at once', gm_need_t: 'GM: click where the bar should end', s_amts: 'How much is taken and given',
+        a_sat: 'Satiety, per part of the day', a_eng: 'Strength, per part of the day', a_engn: 'Strength, per night awake', a_hyg: 'Hygiene, per part of the day', a_ate: 'A meal gives', a_drank: 'A drink gives', a_slept: 'After sleep, strength is at least', a_dirty: 'Got dirty: hygiene down to', a_wore: 'Worn out: strength −', a_drained: 'An own need drained: −',
         s_speed: 'Speed, %', s_partEvery: 'No Scene Card clock: a new part of the day every N replies',
         s_cycle_h: 'Cycle', s_cycle: 'Menstrual cycle (rolled once for each woman)', s_preg: 'A chance of pregnancy after an intimate scene', s_hide: 'Keep it hidden until the period is late',
         s_ail_h: 'Ailments', s_ail: 'Small ailments: from the story, and a die once a day', s_ailChance: 'Chance per day, %',
@@ -4828,6 +4973,10 @@ const I18N = {
         tab: 'Персонаж',
         sat: 'Сытость', hyd: 'Вода', eng: 'Силы', hyg: 'Гигиена',
         dirty: 'давно не мылся(-ась)', own_low: '{n} на исходе',
+        np_pick: 'Пресет…', np_pick_t: 'Набор потребностей для какого-то существа: выбранный применяется к этому персонажу', np_built: 'Готовые', np_mine: 'Твои', np_save: 'Сохранить эти потребности как свой пресет', np_del: 'Удалить выбранный свой пресет',
+        np_save_q: 'Название пресета:', np_saved: 'Пресет «{preset}» сохранён.', np_deleted: 'Пресет «{preset}» удалён.', np_applied: '{name}: потребности «{preset}».',
+        np_human: 'Человек', np_vampire: 'Вампир', np_angel: 'Ангел', np_demon: 'Демон', np_werewolf: 'Оборотень', np_android: 'Андроид', np_fae: 'Фейри', np_ghost: 'Призрак', np_mage: 'Маг',
+        np_need_blood: 'Кровь', np_need_grace: 'Благодать', np_need_faith: 'Вера', np_need_fear: 'Страх', np_need_contracts: 'Контракты', np_need_moon: 'Луна', np_need_hunt: 'Охота', np_need_charge: 'Заряд', np_need_service: 'Обслуживание', np_need_nature: 'Природа', np_need_mischief: 'Шалость', np_need_memory: 'Память', np_need_mana: 'Мана',
         needs_h: 'Потребности', need_add: 'Добавить потребность', need_name_ph: 'Кровь, кофе…', need_icon_ph: '✦', rate: 'Убывает', rate_slow: 'медленно', rate_mid: 'обычно', rate_fast: 'быстро', need_del: 'Убрать потребность',
         hungry: 'голоден', very_hungry: 'очень голоден', thirsty: 'хочет пить', exhausted: 'без сил', tired: 'устал',
         ph_period: 'Месячные', ph_follicular: 'Спокойные дни', ph_ovulation: 'Овуляция', ph_luteal: 'Вторая половина', ph_pms: 'Перед месячными',
@@ -4848,6 +4997,8 @@ const I18N = {
         pill: 'Принимает противозачаточные', preg_end: 'Беременность закончилась', protected_by: 'Защита: {what}', condom_used: 'Использован презерватив ({from})', from_pocket: 'из кармана {name}', from_bag: 'из твоего рюкзака',
         what_condom: 'презерватив', what_pill: 'таблетки', what_story: 'предохранялись по сюжету',
         s_enable: 'Включить вкладку «Персонаж»', s_needs_h: 'Потребности', s_needs: 'Сытость, силы, гигиена и свои потребности убывают по времени истории (какие именно — в настройках тела каждого персонажа)',
+        s_gm: 'Режим ГМ: править потребности вручную (клик по полоске)', s_offscreen: 'За кадром персонажи сами о себе заботятся (едят, спят, моются) — без сообщений об этом', s_fxmax: 'Не больше стольких одновременно', gm_need_t: 'ГМ: щёлкни там, где должна кончаться полоска', s_amts: 'Сколько отнимается и даётся',
+        a_sat: 'Сытость, за часть дня', a_eng: 'Силы, за часть дня', a_engn: 'Силы, за ночь без сна', a_hyg: 'Гигиена, за часть дня', a_ate: 'Еда даёт', a_drank: 'Питьё даёт', a_slept: 'После сна силы не меньше', a_dirty: 'Испачкался: гигиена до', a_wore: 'Выбился из сил: силы −', a_drained: 'Своя потребность отнята: −',
         s_speed: 'Скорость, %', s_partEvery: 'Без часов Scene Card: новая часть дня каждые N ответов',
         s_cycle_h: 'Цикл', s_cycle: 'Менструальный цикл (бросается один раз для каждой женщины)', s_preg: 'Шанс беременности после интимной сцены', s_hide: 'Скрывать, пока нет задержки',
         s_ail_h: 'Недомогания', s_ail: 'Мелкие недомогания: из сюжета и кубик раз в день', s_ailChance: 'Шанс в день, %',
@@ -4912,9 +5063,48 @@ function loadSettings() {
     if (!extension_settings[MODULE_NAME]) extension_settings[MODULE_NAME] = {};
     settings = Object.assign({}, defaultSettings, extension_settings[MODULE_NAME]);
     if (!settings.traits || typeof settings.traits !== 'object') settings.traits = {};
-    ['needsSpeed', 'partEvery', 'ailmentChance', 'slotCount', 'injectDepth'].forEach(k => { if (!Number.isFinite(+settings[k])) settings[k] = defaultSettings[k]; });
+    ['needsSpeed', 'partEvery', 'ailmentChance', 'slotCount', 'injectDepth', 'amtSat', 'amtEng', 'amtEngNight', 'amtHyg', 'amtAte', 'amtDrank', 'amtSlept', 'amtDirty', 'amtWore', 'amtDrained'].forEach(k => { if (!Number.isFinite(+settings[k])) settings[k] = defaultSettings[k]; });
     if (![1, 7, 30].includes(+settings.pregSpeed)) settings.pregSpeed = 1;
     settings.pregSpeed = +settings.pregSpeed;
+    settings.needPresets = cleanNeedPresets(settings.needPresets);
+}
+/* Presets of needs: a set of which ordinary needs a character has and which needs of their own —
+   for a vampire, an angel, a demon… A few come built in; you can keep your own (saved, applied,
+   deleted). Only names, icons and speeds: what a preset holds goes into the request only as the
+   names of needs, the way a need typed by hand does. */
+const NEED_PRESETS = [
+    { id: 'human', sat: true, eng: true, hyg: true, own: [] },
+    { id: 'vampire', sat: false, eng: true, hyg: true, own: [{ k: 'blood', icon: '🩸', rate: 'mid' }] },
+    { id: 'angel', sat: false, eng: false, hyg: true, own: [{ k: 'grace', icon: '✨', rate: 'slow' }, { k: 'faith', icon: '🕊', rate: 'slow' }] },
+    { id: 'demon', sat: true, eng: false, hyg: true, own: [{ k: 'fear', icon: '😱', rate: 'mid' }, { k: 'contracts', icon: '📜', rate: 'slow' }] },
+    { id: 'werewolf', sat: true, eng: true, hyg: true, own: [{ k: 'moon', icon: '🌕', rate: 'slow' }, { k: 'hunt', icon: '🐺', rate: 'mid' }] },
+    { id: 'android', sat: false, eng: false, hyg: false, own: [{ k: 'charge', icon: '🔋', rate: 'mid' }, { k: 'service', icon: '🛠', rate: 'slow' }] },
+    { id: 'fae', sat: true, eng: true, hyg: true, own: [{ k: 'nature', icon: '🌿', rate: 'slow' }, { k: 'mischief', icon: '🎭', rate: 'mid' }] },
+    { id: 'ghost', sat: false, eng: false, hyg: false, own: [{ k: 'memory', icon: '🕯', rate: 'slow' }] },
+    { id: 'mage', sat: true, eng: true, hyg: true, own: [{ k: 'mana', icon: '🔮', rate: 'mid' }] }
+];
+function cleanNeedPresets(list) {
+    if (!Array.isArray(list)) return [];
+    const rates = ['slow', 'mid', 'fast'];
+    return list.filter(x => x && typeof x === 'object' && typeof x.name === 'string' && x.name.trim()).slice(0, 30).map(x => ({
+        id: typeof x.id === 'string' && /^[a-z0-9]{4,16}$/.test(x.id) ? x.id : genId(),
+        name: x.name.trim().slice(0, 40),
+        sat: x.sat !== false, eng: x.eng !== false, hyg: x.hyg !== false,
+        own: (Array.isArray(x.own) ? x.own : []).filter(o => o && typeof o.name === 'string' && o.name.trim()).slice(0, 4)
+            .map(o => ({ name: o.name.trim().slice(0, 24), icon: String(o.icon || '✦').slice(0, 4), rate: rates.includes(o.rate) ? o.rate : 'mid' }))
+    }));
+}
+const presetChosen = {};   // the preset last chosen for each character, shown as chosen after the redraw
+function applyNeedPreset(name, preset) {
+    const nd = needsOf(name);
+    nd.sat = preset.sat !== false; nd.eng = preset.eng !== false; nd.hyg = preset.hyg !== false;
+    const want = (preset.own || []).map(o => ({ name: o.name || t('np_need_' + o.k), icon: o.icon || '✦', rate: o.rate || 'mid' }));
+    // a need already there by the same name keeps its id, so its meter keeps its value
+    const keep = nd.own.filter(o => want.some(w => keyOf(w.name) === keyOf(o.name)));
+    const c = charOf(name, false);
+    nd.own.filter(o => !keep.includes(o)).forEach(o => { if (c) delete c.own[o.id]; });
+    nd.own = want.slice(0, 4).map(w => { const k0 = keep.find(o => keyOf(o.name) === keyOf(w.name)); return k0 ? Object.assign(k0, { icon: w.icon, rate: w.rate }) : { id: genId(), name: w.name, icon: w.icon, rate: w.rate }; });
+    saveSettings(); if (c) saveChat();
 }
 function saveSettings() { extension_settings[MODULE_NAME] = settings; saveSettingsDebounced(); }
 function on() { return !!settings.enabled; }
@@ -5008,6 +5198,8 @@ function needsOf(name) {
     if (!Array.isArray(n.own)) n.own = [];
     return n;
 }
+// one of the amounts from the settings (0–100), the default when it is not a number
+function amt(k) { const v = Number(settings[k]); return Number.isFinite(v) ? clamp(v, 0, 100) : defaultSettings[k]; }
 function ownVal(c, o) { const v = c.own[o.id]; return Number.isFinite(v) ? v : 80; }
 function logIt(c, text) { c.log.push({ day: chatState().day, text }); c.log = c.log.slice(-8); }
 
@@ -5178,13 +5370,30 @@ function passPart(toPart) {
         if (!settings.needs) return;
         const nd = needsOf(c.name);
         if (!Number.isFinite(c.hyg)) charOf(c.name);   // an old record: brought up to date first
-        if (nd.sat) c.sat = clamp(Math.round(c.sat - 18 * sp), 0, 100);
-        if (nd.eng) c.eng = clamp(Math.round(c.eng - (s.part === 'night' ? 22 : 9) * sp), 0, 100);   // a night without sleep costs the most
-        if (nd.hyg) c.hyg = clamp(Math.round(c.hyg - 8 * sp), 0, 100);
+        if (nd.sat) c.sat = clamp(Math.round(c.sat - amt('amtSat') * sp), 0, 100);
+        if (nd.eng) c.eng = clamp(Math.round(c.eng - (s.part === 'night' ? amt('amtEngNight') : amt('amtEng')) * sp), 0, 100);   // a night without sleep costs the most
+        if (nd.hyg) c.hyg = clamp(Math.round(c.hyg - amt('amtHyg') * sp), 0, 100);
         nd.own.forEach(o => { c.own[o.id] = clamp(Math.round(ownVal(c, o) - (OWN_RATE[o.rate] || 12) * sp), 0, 100); });
+        /* Off screen (not in the scene, nobody writing for them): they live their own lives —
+           eat, sleep at night, wash, see to their own needs — without a word about it in the chat. */
+        if (settings.offscreen && offScreen(c.name)) {
+            if (nd.sat) c.sat = Math.max(c.sat, 70);
+            if (nd.eng && (s.part === 'night' || next === 'morning')) c.eng = Math.max(c.eng, 85);
+            if (nd.hyg) c.hyg = Math.max(c.hyg, 75);
+            nd.own.forEach(o => { c.own[o.id] = Math.max(ownVal(c, o), 70); });
+        }
     });
     if (next === 'morning') newDay();
     s.part = next;
+}
+// not in the scene: nobody wrote for them in the last ten replies, and RPG Map (if it is on) does not have them with you
+function offScreen(name) {
+    try {
+        if (presentNames().some(n => keyOf(n) === keyOf(name))) return false;
+        const m = window.RPG && window.RPG.map;
+        if (m && m.available && typeof m.whereIs === 'function' && (!m.isEnabled || m.isEnabled())) { const w = m.whereIs(name); if (w && w.kind === 'you') return false; }
+        return true;
+    } catch (e) { return false; }
 }
 function newDay() {
     const s = chatState(); if (!s) return;
@@ -5255,6 +5464,7 @@ function fromStatus(charName, body, messageId) {
     try {
         if (!on() || !body || typeof body !== 'object') return;
         const s = chatState(); if (!s) return;
+        journal = turnJ && turnJ.id === messageId ? turnJ.list : null;
         const k = keyOf(charName);
         // a recalculation of an older message must not hand the same umbrella over twice
         if (Number.isInteger(messageId) && Number.isInteger(s.lastRead[k]) && messageId <= s.lastRead[k]) return;
@@ -5266,16 +5476,16 @@ function fromStatus(charName, body, messageId) {
             const nd = needsOf(charName);
             // one satiety: a meal fills it much, a drink a little
             // the story took something out of them (mud, a long run): before what it gave back, so a bath after the mud still counts
-            if (nd.hyg && yes(body.got_dirty)) c.hyg = Math.min(c.hyg, 15);
-            if (nd.eng && yes(body.wore_out)) c.eng = clamp(c.eng - 30, 0, 100);
-            if (yes(body.ate)) c.sat = clamp(c.sat + 55, 0, 100);
-            if (yes(body.drank)) c.sat = clamp(c.sat + 15, 0, 100);
-            if (yes(body.slept)) c.eng = Math.max(c.eng, 92);
+            if (nd.hyg && yes(body.got_dirty)) c.hyg = Math.min(c.hyg, amt('amtDirty'));
+            if (nd.eng && yes(body.wore_out)) c.eng = clamp(c.eng - amt('amtWore'), 0, 100);
+            if (yes(body.ate)) c.sat = clamp(c.sat + amt('amtAte'), 0, 100);
+            if (yes(body.drank)) c.sat = clamp(c.sat + amt('amtDrank'), 0, 100);
+            if (yes(body.slept)) c.eng = Math.max(c.eng, amt('amtSlept'));
             if (nd.hyg && yes(body.washed)) c.hyg = 100;
             // something in the scene took one of their own needs away at once: −40, before what refilled it
             (Array.isArray(body.drained) ? body.drained : []).slice(0, 6).forEach(n => {
                 const o = nd.own.find(x => keyOf(x.name) === keyOf(n) || same(x.name, n));
-                if (o) c.own[o.id] = clamp(ownVal(c, o) - 40, 0, 100);
+                if (o) c.own[o.id] = clamp(ownVal(c, o) - amt('amtDrained'), 0, 100);
             });
             (Array.isArray(body.refilled) ? body.refilled : []).slice(0, 6).forEach(n => {
                 const o = nd.own.find(x => keyOf(x.name) === keyOf(n) || same(x.name, n));
@@ -5297,7 +5507,9 @@ function fromStatus(charName, body, messageId) {
                 const days = clamp(parseInt(a && a.days, 10) || 2, 1, 14);
                 // already there, in other words ("a bruised rib" / "bruised ribs"): one ailment, its days renewed
                 const was = c.ailments.find(x => alike(x.name, nm));
-                if (was) { if (Number.isFinite(was.days) && days > was.days) was.days = days; return; }
+                // the same ailment again (in other words too) is not a new one, and its days are not renewed:
+                // they only run down with the days and healing
+                if (was) return;
                 c.ailments.push({ id: genId(), name: nm, days, from: 'story' });
             });
             (Array.isArray(body.healed) ? body.healed : []).forEach(n => { const kk = keyOf(n); if (!kk) return; c.ailments = c.ailments.filter(a => keyOf(a.name) !== kk && !keyOf(a.name).includes(kk) && !alike(a.name, n)); });
@@ -5324,6 +5536,7 @@ function fromStatus(charName, body, messageId) {
         }
         saveChat(); updateInjection(); refresh();
     } catch (e) { console.warn('[Character] status read', e); }
+    finally { journal = null; }
 }
 // the extra the Status Bar asks for, in its own request — shown to her before it was added
 function statusAsk(charName) {
@@ -5332,7 +5545,7 @@ function statusAsk(charName) {
     // the extra questions, each only when its switch is on
     const c0 = charOf(charName, false);
     let more = '';
-    if (settings.slots && settings.itemsSelf) more += `\n- picked_up: things ${charName} took for themselves from the scene (not from ${u}) and kept — not things taken and used up at once, and nothing ${charName} already has in their pockets. used_up: things from ${charName}'s own pockets that ${charName} used up, ate, drank, broke or gave to someone other than ${u} — including what ${u} has just handed over, if ${charName} ate or used it there. ${charName}'s pockets now: ${c0 && c0.slots.length ? c0.slots.map(x => x.name).join(', ') : 'empty'}.`;
+    if (settings.slots && settings.itemsSelf) more += `\n- picked_up: things ${charName} took for themselves from the scene (not from ${u}) and kept — not things taken and used up at once, and nothing ${charName} already has in their pockets. used_up: things from ${charName}'s own pockets that ${charName} used up, ate, drank, broke, left somewhere, put away or gave to someone other than ${u} — including what ${u} has just handed over, if ${charName} ate or used it there. ${charName}'s pockets now: ${c0 && c0.slots.length ? c0.slots.map(x => x.name).join(', ') : 'empty'}.`;
     // the needs this character has: washing, and needs of their own
     const nd0 = settings.needs ? needsOf(charName) : null;
     const askWash = !!(nd0 && nd0.hyg), askOwn = nd0 && nd0.own.length ? nd0.own.map(o => o.name) : [];
@@ -5354,7 +5567,7 @@ function statusAsk(charName) {
 6. Also report what happened to ${charName}'s body and belongings in the NEW part of the story only (after the line "=== NEW ==="), in a "body" object:
 "body": {"ate": false, "drank": false, "slept": false, "new_ailments": [{"name": "", "days": 1}], "healed": [], "got_from_player": [], "gave_to_player": []${settings.slots && settings.itemsSelf ? ', "picked_up": [], "used_up": []' : ''}${settings.nights ? ', "drank_alcohol": false' : ''}${settings.adrenaline ? ', "fought": false' : ''}${c0 && c0.preg ? ', "pregnancy_ended": false' : ''}${askWash ? ', "washed": false, "got_dirty": false' : ''}${askTired ? ', "wore_out": false' : ''}${askOwn.length ? ', "refilled": [], "drained": []' : ''}${settings.intimFx ? ', "intimacy_effects": []' : ''}}
 - ate / drank / slept: true only if ${charName} personally ate something, drank, or slept through a night there — never for what someone else in the scene did (${u}, another character, an animal).
-- new_ailments: a small illness or injury ${charName} clearly got (a cold, a sprained ankle, a toothache) and how many days it lasts (1-7). healed: names of ailments that clearly passed.
+- new_ailments: a small illness or injury ${charName} clearly got (a cold, a sprained ankle, a toothache) and how many days it lasts (1-7). healed: names of ailments that clearly passed.${settings.ailments ? ` ${charName}'s ailments now: ${c0 && c0.ailments.length ? c0.ailments.map(a => a.name).join(', ') : 'none'}. Only a NEW illness or injury that happened in the new part counts: never one of these again, in any words, and never one that is only mentioned or felt again (wincing from an old injury is not a new one).` : ''}
 - got_from_player: things ${u} actually handed to ${charName}, or ${charName} took from ${u}, by name. gave_to_player: things ${charName} actually handed to ${u}.${more}
 Leave everything false or empty when nothing like that happened. ${lang() === 'ru' ? 'Write the names in Russian.' : 'Write the names in English.'}`;
 }
@@ -5412,14 +5625,49 @@ function mergeAilments(c) {
     c.ailments.forEach(a => {
         const was = a && a.name ? out.find(x => alike(x.name, a.name)) : null;
         if (!was) { out.push(a); return; }
-        changed = true;
-        if (!Number.isFinite(a.days) || (Number.isFinite(was.days) && a.days > was.days)) was.days = a.days;
+        changed = true;   // the first (oldest) keeps its own days: a duplicate never lengthens it
     });
     if (changed) c.ailments = out;
     return changed;
 }
 function slotCap() { return clamp(parseInt(settings.slotCount, 10) || 5, 1, 8); }
 // a thing from the player's backpack (by name, or the item itself) into the character's pocket
+/* Swipes: while a reply is being counted, what moves between a pocket and the player's backpack is written
+   down, so that a rewind to before the reply can put the backpack back as well (the pockets are in the
+   chat's state and come back with it). */
+let journal = null;    // only set while fromStatus reads the reply being counted
+let turnJ = null;      // { id, list }: the reply being counted, and its list
+function journalStart(id, list) { turnJ = { id, list: Array.isArray(list) ? list : [] }; return turnJ.list; }
+function journalUndo(list) {
+    const v = inv(); if (!v || !Array.isArray(list)) return;
+    const was = journal; journal = null;
+    try {
+        for (let i = list.length - 1; i >= 0; i--) {
+            const j = list[i]; if (!j) continue;
+            if (j.op === 'took' && j.item) v.add(j.item);
+            else if (j.op === 'gave') { const hit = (v.list() || []).find(x => x.id === j.id) || (v.list() || []).find(x => j.item && same(x.name, j.item.name)); if (hit) v.remove(hit.id); }
+        }
+    } finally { journal = was; }
+}
+function journalRedo(list) {
+    const v = inv(); const out = [];
+    if (!v || !Array.isArray(list)) return out;
+    const was = journal; journal = null;
+    try {
+        for (const j of list) {
+            if (!j || !j.item) continue;
+            if (j.op === 'took') { const hit = (v.list() || []).find(x => same(x.name, j.item.name)); if (hit) { const it = v.remove(hit.id); if (it) out.push({ op: 'took', item: JSON.parse(JSON.stringify(it)) }); } }
+            else if (j.op === 'gave') { const it = v.add(j.item); if (it) out.push({ op: 'gave', id: it.id, item: JSON.parse(JSON.stringify(it)) }); }
+        }
+    } finally { journal = was; }
+    return out;
+}
+function snapState() { const st = chatState(); return st ? JSON.parse(JSON.stringify(st)) : null; }
+function restoreState(snap) {
+    const md = getContext().chatMetadata; if (!md) return;
+    if (snap && typeof snap === 'object') md.rpg_body = JSON.parse(JSON.stringify(snap));
+    chatState(); saveChat(); updateInjection(); refresh();
+}
 function takeFromPlayer(charName, nameOrItem, quiet = false) {
     const c = charOf(charName); if (!c) return false;
     if (c.slots.length >= slotCap()) { if (!quiet) toastr.info(t('full', { name: charName })); return false; }
@@ -5428,7 +5676,7 @@ function takeFromPlayer(charName, nameOrItem, quiet = false) {
     if (nameOrItem && typeof nameOrItem === 'object') item = nameOrItem;
     else if (v) {
         const hit = (v.list() || []).find(i => same(i.name, nameOrItem));
-        if (hit) item = v.remove(hit.id);
+        if (hit) { item = v.remove(hit.id); if (item && journal) journal.push({ op: 'took', item: JSON.parse(JSON.stringify(item)) }); }
     }
     const nm = String(item ? item.name : nameOrItem || '').trim().slice(0, 60);
     if (!nm) return false;
@@ -5451,7 +5699,7 @@ function giveToPlayer(charName, nameOrId, quiet = false) {
     const nm = slot ? slot.name : String(nameOrId || '').trim().slice(0, 60);
     if (!nm) return false;
     const v = inv();
-    if (v) v.add(slot && slot.item ? slot.item : { name: nm, desc: slot ? slot.desc : '', type: 'misc' });
+    if (v) { const added = v.add(slot && slot.item ? slot.item : { name: nm, desc: slot ? slot.desc : '', type: 'misc' }); if (added && journal) journal.push({ op: 'gave', id: added.id, item: JSON.parse(JSON.stringify(added)) }); }
     logIt(c, '→ ' + nm);
     saveChat();
     if (!quiet) { updateInjection(); refresh(); }
@@ -5482,7 +5730,8 @@ function takeFx(c, list) {
         c.fx.push({ id: genId(), name, kind, desc, until: s.turn + turns, src: 'intimacy' });
         logIt(c, '♥ ' + name);
     });
-    if (c.fx.length > 6) c.fx = c.fx.slice(-6);
+    const cap = clamp(parseInt(settings.fxMax, 10) || 3, 1, 6);
+    if (c.fx.length > cap) c.fx = c.fx.slice(-cap);
 }
 
 /* ---------------- today's states: a hangover, a bad night, the adrenaline of a fight ---------------- */
@@ -5878,10 +6127,11 @@ function cast() {
 /* ---------------- the pane ---------------- */
 const pick = {};   // block -> whose body it shows (a world card)
 const moreOpen = new Set();   // whose body settings are open — they stay open while you change them
-function meter(icon, label, val, cls) {
+function meter(icon, label, val, cls, key = '') {
     const v = clamp(Math.round(val), 0, 100);
     const band = v < 25 ? 'low' : v < 55 ? 'mid' : 'high';
-    return `<div class="rbd-need ${cls} ${band}"><span class="rbd-need-i" aria-hidden="true">${icon}</span><span class="rbd-need-l">${esc(label)}</span><span class="rbd-need-bar"><span style="width:${v}%"></span></span><span class="rbd-need-v">${v}</span></div>`;
+    const gm = settings.gm && key;
+    return `<div class="rbd-need ${cls} ${band}${gm ? ' gm' : ''}"${gm ? ` data-k="${esc(key)}" title="${esc(t('gm_need_t'))}"` : ''}><span class="rbd-need-i" aria-hidden="true">${icon}</span><span class="rbd-need-l">${esc(label)}</span><span class="rbd-need-bar"><span style="width:${v}%"></span></span><span class="rbd-need-v">${v}</span></div>`;
 }
 // the clipping folded into a strip, in the mother's tab (or the father's, when the mother is the player)
 function birthStrip(name) {
@@ -5921,7 +6171,20 @@ function needsEditHtml(name) {
     const nd = needsOf(name);
     const box = (k, icon) => `<label class="rbd-nd-chk"><input type="checkbox" class="rbd-nd" data-nd="${k}"${nd[k] ? ' checked' : ''}> ${icon} ${esc(t(k))}</label>`;
     const rateSel = (cur, cls) => `<select class="${cls}" aria-label="${esc(t('rate'))}" title="${esc(t('rate'))}">${['slow', 'mid', 'fast'].map(r => `<option value="${r}"${cur === r ? ' selected' : ''}>${esc(t('rate_' + r))}</option>`).join('')}</select>`;
+    const mine = settings.needPresets || [];
+    let chosen = presetChosen[keyOf(name)] || '';
+    if (chosen.startsWith('u:') && !mine.some(p0 => 'u:' + p0.id === chosen)) chosen = '';
+    const presetRow = `<div class="rbd-nd-preset">
+            <select class="rbd-nd-psel" aria-label="${esc(t('np_pick'))}" title="${esc(t('np_pick_t'))}">
+                <option value="">${esc(t('np_pick'))}</option>
+                <optgroup label="${esc(t('np_built'))}">${NEED_PRESETS.map(p0 => `<option value="b:${p0.id}"${chosen === 'b:' + p0.id ? ' selected' : ''}>${esc(t('np_' + p0.id))}</option>`).join('')}</optgroup>
+                ${mine.length ? `<optgroup label="${esc(t('np_mine'))}">${mine.map(p0 => `<option value="u:${esc(p0.id)}"${chosen === 'u:' + p0.id ? ' selected' : ''}>${esc(p0.name)}</option>`).join('')}</optgroup>` : ''}
+            </select>
+            <button type="button" class="rbd-nd-psave" title="${esc(t('np_save'))}" aria-label="${esc(t('np_save'))}">💾</button>
+            <button type="button" class="rbd-nd-pdel" title="${esc(t('np_del'))}" aria-label="${esc(t('np_del'))}"${chosen.startsWith('u:') ? '' : ' disabled'}>🗑</button>
+        </div>`;
     return `<fieldset class="rbd-nds"><legend>${esc(t('needs_h'))}</legend>
+        ${presetRow}
         <div class="rbd-nd-row">${box('sat', '🍞')}${box('eng', '🌙')}${box('hyg', '🧼')}</div>
         ${nd.own.map(o => `<div class="rbd-nd-own" data-own="${esc(o.id)}"><span class="rbd-nd-ic">${esc(o.icon || '✦')}</span><b>${esc(o.name)}</b>${rateSel(o.rate || 'mid', 'rbd-nd-rate')}<button type="button" class="rbd-nd-x" title="${esc(t('need_del'))}" aria-label="${esc(t('need_del'))}">✕</button></div>`).join('')}
         <div class="rbd-nd-add"><input type="text" class="rbd-nd-icon" maxlength="4" placeholder="${esc(t('need_icon_ph'))}" aria-label="emoji"><input type="text" class="rbd-nd-name" maxlength="24" placeholder="${esc(t('need_name_ph'))}" aria-label="${esc(t('need_add'))}">${rateSel('mid', 'rbd-nd-newrate')}<button type="button" class="rbd-nd-plus" title="${esc(t('need_add'))}" aria-label="${esc(t('need_add'))}">＋</button></div>
@@ -5942,8 +6205,8 @@ function paneHtml(name, blockChar) {
     h += head;
     if (settings.needs) {
         const nd = needsOf(name);
-        const ms = (nd.sat ? meter('🍞', t('sat'), c.sat, 'sat') : '') + (nd.eng ? meter('🌙', t('eng'), c.eng, 'eng') : '') + (nd.hyg ? meter('🧼', t('hyg'), c.hyg, 'hyg') : '')
-            + nd.own.map(o => meter(o.icon || '✦', o.name, ownVal(c, o), 'own')).join('');
+        const ms = (nd.sat ? meter('🍞', t('sat'), c.sat, 'sat', 'sat') : '') + (nd.eng ? meter('🌙', t('eng'), c.eng, 'eng', 'eng') : '') + (nd.hyg ? meter('🧼', t('hyg'), c.hyg, 'hyg', 'hyg') : '')
+            + nd.own.map(o => meter(o.icon || '✦', o.name, ownVal(c, o), 'own', 'own:' + o.id)).join('');
         if (ms) h += `<div class="rbd-needs">${ms}</div>`;
     }
     // the cycle
@@ -6018,6 +6281,16 @@ function partWord(p) {
 function bindPane(pane, name, container) {
     const repaint = () => { saveChat(); updateInjection(); refresh(); };
     pane.querySelectorAll('.rbd-chip').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); pick[container.getAttribute('data-mesid')] = el.getAttribute('data-who'); paint(container, true); }));
+    // GM mode: a click on a need's bar sets it there
+    pane.querySelectorAll('.rbd-need.gm[data-k] .rbd-need-bar').forEach(el => el.addEventListener('click', e => {
+        e.stopPropagation();
+        const r = el.getBoundingClientRect();
+        const pct = clamp(Math.round(((e.clientX - r.left) / Math.max(1, r.width)) * 100), 0, 100);
+        const k = el.closest('.rbd-need').getAttribute('data-k'); const c = charOf(name);
+        if (!c || !k) return;
+        if (k.startsWith('own:')) c.own[k.slice(4)] = pct; else if (k === 'sat' || k === 'eng' || k === 'hyg') c[k] = pct;
+        repaint();
+    }));
     pane.querySelectorAll('.rbd-fx .rbd-x').forEach(el => el.addEventListener('click', e => {
         e.stopPropagation();
         const c = charOf(name); const id = el.closest('.rbd-fx').getAttribute('data-fx');
@@ -6085,6 +6358,54 @@ function bindPane(pane, name, container) {
             saveSettings(); repaint();
         });
     });
+    // presets: choose one to apply it; 💾 keeps the current set as your own; 🗑 deletes your own chosen one
+    const psel = pane.querySelector('.rbd-nd-psel');
+    if (psel) {
+        const pdel = pane.querySelector('.rbd-nd-pdel');
+        psel.addEventListener('click', e => e.stopPropagation());
+        psel.addEventListener('change', () => {
+            const v = String(psel.value || '');
+            if (pdel) pdel.disabled = !v.startsWith('u:');
+            presetChosen[keyOf(name)] = v;
+            if (!v) return;
+            const p0 = v.startsWith('b:') ? NEED_PRESETS.find(x => x.id === v.slice(2)) : (settings.needPresets || []).find(x => x.id === v.slice(2));
+            if (!p0) return;
+            applyNeedPreset(name, p0);
+            toastr.success(t('np_applied', { name, preset: v.startsWith('b:') ? t('np_' + p0.id) : p0.name }));
+            repaint();
+        });
+        pane.querySelector('.rbd-nd-psave').addEventListener('click', async e => {
+            e.stopPropagation();
+            const ctx = getContext();
+            let nm = '';
+            try {
+                if (typeof ctx.callGenericPopup === 'function' && ctx.POPUP_TYPE) nm = await ctx.callGenericPopup(esc(t('np_save_q')), ctx.POPUP_TYPE.INPUT, '');
+                else nm = window.prompt(t('np_save_q'), '');
+            } catch (err) { nm = ''; }
+            nm = String(nm || '').trim().slice(0, 40);
+            if (!nm) return;
+            const nd = needsOf(name);
+            const list = settings.needPresets || (settings.needPresets = []);
+            const same0 = list.find(x => keyOf(x.name) === keyOf(nm));
+            const data = { name: nm, sat: !!nd.sat, eng: !!nd.eng, hyg: !!nd.hyg, own: nd.own.map(o => ({ name: o.name, icon: o.icon || '✦', rate: o.rate || 'mid' })) };
+            let id0 = same0 ? same0.id : genId();
+            if (same0) Object.assign(same0, data); else { if (list.length >= 30) list.shift(); list.push(Object.assign({ id: id0 }, data)); }
+            settings.needPresets = cleanNeedPresets(list);
+            presetChosen[keyOf(name)] = 'u:' + id0;
+            saveSettings(); repaint();
+            toastr.success(t('np_saved', { preset: nm }));
+        });
+        if (pdel) pdel.addEventListener('click', e => {
+            e.stopPropagation();
+            const v = String(psel.value || '');
+            if (!v.startsWith('u:')) return;
+            const p0 = (settings.needPresets || []).find(x => x.id === v.slice(2));
+            settings.needPresets = (settings.needPresets || []).filter(x => x.id !== v.slice(2));
+            delete presetChosen[keyOf(name)];
+            saveSettings(); repaint();
+            if (p0) toastr.info(t('np_deleted', { preset: p0.name }));
+        });
+    }
     const plus = pane.querySelector('.rbd-nd-plus');
     if (plus) {
         const add = () => {
@@ -6184,14 +6505,20 @@ function settingsHtml() {
                 <option value="">${esc(t('s_lang_follow'))}</option><option value="en">English</option><option value="ru">Русский</option>
             </select></div>
         <div class="rpg-hint">${esc(t('s_hint'))}</div>
-        ${sub(`🍞 ${esc(t('s_needs_h'))}`, `${chk('rbd-needs', t('s_needs'))}<div class="rpg-in">${num('rbd-speed', t('s_speed'), 'min="25" max="300" step="5"')}${num('rbd-partevery', t('s_partEvery'), 'min="2" max="60"')}</div>`)}
+        ${sub(`🍞 ${esc(t('s_needs_h'))}`, `${chk('rbd-needs', t('s_needs'))}<div class="rpg-in">${num('rbd-speed', t('s_speed'), 'min="25" max="300" step="5"')}${num('rbd-partevery', t('s_partEvery'), 'min="2" max="60"')}
+            ${chk('rbd-gm', t('s_gm'))}${chk('rbd-offscreen', t('s_offscreen'))}
+            <details class="rbd-amts"><summary>⚖️ ${esc(t('s_amts'))}</summary>
+            ${num('rbd-a-sat', t('a_sat'), 'min="0" max="100"')}${num('rbd-a-eng', t('a_eng'), 'min="0" max="100"')}${num('rbd-a-engn', t('a_engn'), 'min="0" max="100"')}${num('rbd-a-hyg', t('a_hyg'), 'min="0" max="100"')}
+            ${num('rbd-a-ate', t('a_ate'), 'min="0" max="100"')}${num('rbd-a-drank', t('a_drank'), 'min="0" max="100"')}${num('rbd-a-slept', t('a_slept'), 'min="0" max="100"')}
+            ${num('rbd-a-dirty', t('a_dirty'), 'min="0" max="100"')}${num('rbd-a-wore', t('a_wore'), 'min="0" max="100"')}${num('rbd-a-drained', t('a_drained'), 'min="0" max="100"')}
+            </details></div>`)}
         ${sub(`🌸 ${esc(t('s_cycle_h'))}`, `${chk('rbd-cycle', t('s_cycle'))}<div class="rpg-in">${chk('rbd-preg', t('s_preg'))}<div class="rpg-in">${chk('rbd-hide', t('s_hide'))}</div></div>`)}
         ${sub(`👶 ${esc(t('s_birth_h'))}`, `${chk('rbd-birth', t('s_birth'))}<div class="rpg-in">
             <div class="rpg-srow"><label for="rbd-pregspeed">${esc(t('s_pregspeed'))}</label><select id="rbd-pregspeed" class="text_pole"><option value="1">${esc(t('sp1'))}</option><option value="7">${esc(t('sp7'))}</option><option value="30">${esc(t('sp30'))}</option></select></div>
             ${chk('rbd-childdesc', t('s_childdesc'))}${chk('rbd-babynights', t('s_babynights'))}</div>`)}
         ${sub(`🤒 ${esc(t('s_ail_h'))}`, `${chk('rbd-ail', t('s_ail'))}<div class="rpg-in">${num('rbd-ailchance', t('s_ailChance'), 'min="0" max="50"')}</div>`)}
         ${sub(`🎒 ${esc(t('s_slots_h'))}`, `${chk('rbd-slots', t('s_slots'))}<div class="rpg-in">${num('rbd-slotcount', t('s_slotCount'), 'min="1" max="8"')}${chk('rbd-itemsself', t('s_items'))}</div>`)}
-        ${sub(`🍺 ${esc(t('s_nights_h'))}`, `${chk('rbd-nights', t('s_nights'))}${chk('rbd-adren', t('s_adren'))}${chk('rbd-intimfx', t('s_intimfx'))}`)}
+        ${sub(`🍺 ${esc(t('s_nights_h'))}`, `${chk('rbd-nights', t('s_nights'))}${chk('rbd-adren', t('s_adren'))}${chk('rbd-intimfx', t('s_intimfx'))}<div class="rpg-in">${num('rbd-fxmax', t('s_fxmax'), 'min="1" max="6"')}</div>`)}
         ${sub(`🎲 ${esc(t('s_dice_h'))}`, chk('rbd-dice', t('s_dice')))}
         ${sub(`🪄 ${esc(t('s_inj_h'))}`, `${chk('rbd-inject', t('s_inj'))}<div class="rpg-in">${num('rbd-depth', t('s_depth'), 'min="0" max="20"')}</div>`)}`;
 }
@@ -6213,6 +6540,9 @@ function mountSettings() {
         try { window.dispatchEvent(new CustomEvent('rpg:preg-speed', { detail: { from: pregSpeed() } })); } catch (e) { /* nobody listens */ }
         settings.pregSpeed = [1, 7, 30].includes(+this.value) ? +this.value : 1; saveChat(); after();
     });
+    bindC('rbd-gm', 'gm'); bindC('rbd-offscreen', 'offscreen'); bindN('rbd-fxmax', 'fxMax', 1, 6);
+    [['sat', 'amtSat'], ['eng', 'amtEng'], ['engn', 'amtEngNight'], ['hyg', 'amtHyg'], ['ate', 'amtAte'], ['drank', 'amtDrank'], ['slept', 'amtSlept'], ['dirty', 'amtDirty'], ['wore', 'amtWore'], ['drained', 'amtDrained']]
+        .forEach(([id, k]) => $('#rbd-a-' + id).val(amt(k)).on('change', function () { const v = parseInt(this.value, 10); settings[k] = Number.isFinite(v) ? clamp(v, 0, 100) : defaultSettings[k]; this.value = settings[k]; after(); }));
     bindN('rbd-speed', 'needsSpeed', 25, 300); bindN('rbd-partevery', 'partEvery', 2, 60); bindN('rbd-ailchance', 'ailmentChance', 0, 50);
     bindN('rbd-slotcount', 'slotCount', 1, 8); bindN('rbd-depth', 'injectDepth', 0, 20);
 }
@@ -6302,6 +6632,7 @@ return {
     exportChar, importChar,
     settings: () => settings, init, on, mountSettings, paint, paintIfNeeded, refresh, onReply, onScene,
     fromStatus, statusAsk, dcMod, updateInjection, isWorldName, t, onChat,
+    snapState, restoreState, journalStart, journalUndo, journalRedo,
     hasPane: (charName) => on() && (!isWorldName(charName) || cast().length > 0)
 };
 })();
@@ -6342,6 +6673,176 @@ function sbOn() { return !!SB.settings().enabled; }
 function bondsOn() { return !!TBE.settings().enabled; }
 function bodyOn() { try { return BODY.on(); } catch (e) { return false; } }
 const bodyTicked = new Set();
+
+/* ------------------------------------------------------------
+   SWIPES AND REGENERATION
+   Swiping, regenerating or continuing the last reply fires MESSAGE_RECEIVED again for the same
+   message. The values from just before that reply (this character's stats, the Character tab's
+   state, and what crossed into the player's backpack) are kept in the chat (rpg_sb_turn), so a new
+   variant is counted from them instead of on top of the old variant. Each variant's result is kept
+   in its own swipe (message.extra is per swipe in SillyTavern): swiping back shows it again without a
+   new request. Deleting the last reply takes its consequences with it.
+   ------------------------------------------------------------ */
+const TURN = { ref: null, pending: false };
+function turnMesKey(msg) {
+    const m = String(msg && msg.mes || '');
+    let h = 0; for (let i = 0; i < m.length; i++) h = (h * 31 + m.charCodeAt(i)) | 0;
+    return `${typeof msg.swipe_id === 'number' ? msg.swipe_id : 0}:${m.length}:${h}`;
+}
+function turnRec() { const md = getContext().chatMetadata; return md && md.rpg_sb_turn && typeof md.rpg_sb_turn === 'object' ? md.rpg_sb_turn : null; }
+function turnRefOk(rec) {
+    const chat = getContext().chat || [];
+    if (!TURN.ref) { const m = chat[rec.id]; if (m && !m.is_user && !m.is_system && m.name === rec.name) TURN.ref = m; }
+    return TURN.ref;
+}
+// What changed from `from` to `to`, laid over `cur`: a swipe moves only what the reply changed, and
+// keeps what was done by hand meanwhile (an edit in GM mode, an item handed over).
+// Numbers move by the difference; lists of things with an id gain and lose those things; the rest takes `to`.
+function rebase(cur, from, to) {
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const copy = x => (x && typeof x === 'object') ? JSON.parse(JSON.stringify(x)) : x;
+    if (same(from, to)) return cur;
+    if (typeof cur === 'number' && typeof from === 'number' && typeof to === 'number') return cur + (to - from);
+    const isObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
+    const idOf = x => isObj(x) ? (x.id != null ? 'i:' + x.id : (x.name != null ? 'n:' + x.name : null)) : null;
+    if (Array.isArray(cur) && Array.isArray(from) && Array.isArray(to) && [...from, ...to].every(x => idOf(x) != null)) {
+        const F = new Map(from.map(x => [idOf(x), x])), T = new Map(to.map(x => [idOf(x), x]));
+        let out = cur.filter(x => { const k = idOf(x); return !(k != null && F.has(k) && !T.has(k)); });
+        out = out.map(x => { const k = idOf(x); return (k != null && F.has(k) && T.has(k)) ? rebase(x, F.get(k), T.get(k)) : x; });
+        for (const [k, x] of T) if (!F.has(k) && !out.some(y => idOf(y) === k)) out.push(copy(x));
+        return out;
+    }
+    if (isObj(cur) && isObj(from) && isObj(to)) {
+        if (cur.id != null && from.id != null && cur.id !== from.id) return cur;   // a different thing there now: not the reply's to change
+        const out = { ...cur };
+        for (const k of new Set([...Object.keys(from), ...Object.keys(to)])) {
+            if (!(k in to)) { delete out[k]; continue; }
+            if (!(k in from) || !(k in cur)) { if (!(k in from) || !same(from[k], to[k])) out[k] = copy(to[k]); continue; }
+            if (!same(from[k], to[k])) out[k] = rebase(cur[k], from[k], to[k]);
+        }
+        return out;
+    }
+    return copy(to);
+}
+function turnSnap(name) { return { sb: SB.snapProfile(name), body: BODY.snapState() }; }
+function clampTurn(snap) {
+    const c = v => Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
+    if (snap.sb && Array.isArray(snap.sb.stats)) snap.sb.stats.forEach(st => { if (typeof st.value === 'number') st.value = c(st.value); });
+    if (snap.sb) snap.sb.msgCount = Math.max(0, Number(snap.sb.msgCount) || 0);
+    const chars = snap.body && snap.body.chars;
+    if (chars && typeof chars === 'object') Object.values(chars).forEach(ch => {
+        if (!ch || typeof ch !== 'object') return;
+        ['sat', 'eng', 'hyg'].forEach(k => { if (typeof ch[k] === 'number') ch[k] = c(ch[k]); });
+        if (ch.own && typeof ch.own === 'object') Object.keys(ch.own).forEach(k => { if (typeof ch.own[k] === 'number') ch.own[k] = c(ch.own[k]); });
+    });
+    return snap;
+}
+// move from the variant now counted to `target` (the values before the reply, or another variant's result),
+// keeping what was changed by hand meanwhile
+function moveTurn(rec, target) {
+    const cur = turnSnap(rec.name);
+    const from = rec.applied || cur;
+    const next = clampTurn({ sb: rebase(cur.sb, from.sb, target.sb), body: rebase(cur.body, from.body, target.body) });
+    if (next.sb) SB.restoreProfile(rec.name, next.sb);
+    if (next.body) BODY.restoreState(next.body);
+    rec.applied = JSON.parse(JSON.stringify({ sb: target.sb, body: target.body }));
+}
+function turnDropKept(msg) {
+    if (!msg) return;
+    if (msg.extra) delete msg.extra.rpg_turn_after;
+    if (Array.isArray(msg.swipe_info)) msg.swipe_info.forEach(si => { if (si && si.extra) delete si.extra.rpg_turn_after; });
+}
+// back to before the reply: the values, the Character tab, the backpack, and the clock may tick again
+function turnRewind(rec) {
+    try { BODY.journalUndo(rec.journal || []); } catch (e) { console.warn('[Character] backpack rewind', e); }
+    rec.journal = [];
+    try { if (rec.before) moveTurn(rec, rec.before); } catch (e) { console.warn('[RPG Status Bar] rewind', e); }
+    bodyTicked.delete(`${getContext().chatId}#${rec.id}`);
+    try { BODY.journalStart(rec.id, rec.journal); } catch (e) { /* no Character tab */ }
+}
+function turnApplyKept(rec, kept) {
+    turnRewind(rec);
+    try { moveTurn(rec, kept); } catch (e) { console.warn('[RPG Status Bar] swipe back', e); }
+    try { rec.journal = BODY.journalRedo(kept.journal || []); BODY.journalStart(rec.id, rec.journal); } catch (e) { /* no backpack */ }
+    bodyTicked.add(`${getContext().chatId}#${rec.id}`);
+    saveChatDebounced();
+}
+function turnKeep(id, key) {
+    const rec = turnRec(); const msg = getContext().chat[id];
+    if (!rec || rec.id !== id || !msg || turnMesKey(msg) !== key) return;
+    const after = { key, sb: SB.snapProfile(rec.name), body: BODY.snapState(), journal: JSON.parse(JSON.stringify(rec.journal || [])) };
+    rec.applied = JSON.parse(JSON.stringify({ sb: after.sb, body: after.body }));
+    if (!msg.extra) msg.extra = {};
+    msg.extra.rpg_turn_after = after;
+    const si = Array.isArray(msg.swipe_info) ? msg.swipe_info[msg.swipe_id] : null;
+    if (si && typeof si === 'object') { if (!si.extra) si.extra = {}; si.extra.rpg_turn_after = JSON.parse(JSON.stringify(after)); }
+    saveChatDebounced();
+}
+function turnOnReceived(id) {
+    const md = getContext().chatMetadata; const chat = getContext().chat || [];
+    const msg = chat[id];
+    if (!md || !msg || msg.is_user || msg.is_system) return { skip: false, key: null };
+    const key = turnMesKey(msg);
+    const rec = turnRec();
+    TURN.pending = false;
+    if (rec && rec.id === id && turnRefOk(rec) === msg) {
+        const kept = msg.extra && msg.extra.rpg_turn_after;
+        if (kept && kept.key === key) return { skip: true, key };   // this variant was already counted
+        turnRewind(rec);                                              // a new variant / regeneration / continuation
+        rec.applied = null;                                           // being counted: until kept, the whole state is this variant's
+        return { skip: false, key };
+    }
+    if (rec && id < rec.id && turnRefOk(rec) && chat.includes(TURN.ref)) return { skip: false, key: null };   // an older reply: as before
+    if (TURN.ref && TURN.ref !== msg) turnDropKept(TURN.ref);        // the previous reply can no longer be swiped
+    md.rpg_sb_turn = { id, name: msg.name, before: turnSnap(msg.name), applied: null, journal: [] };
+    TURN.ref = msg;
+    try { BODY.journalStart(id, md.rpg_sb_turn.journal); } catch (e) { /* no Character tab */ }
+    return { skip: false, key };
+}
+function turnOnSwiped(id) {
+    const rec = turnRec(); const msg = (getContext().chat || [])[id];
+    if (!rec || rec.id !== id || !msg || turnRefOk(rec) !== msg) return null;
+    const generating = !Array.isArray(msg.swipes) || msg.swipe_id >= msg.swipes.length;
+    if (generating) { turnRewind(rec); TURN.pending = true; saveChatDebounced(); return 'generating'; }
+    const kept = msg.extra && msg.extra.rpg_turn_after;
+    if (kept && kept.key === turnMesKey(msg)) { turnApplyKept(rec, kept); return 'kept'; }
+    turnRewind(rec);
+    rec.applied = null;
+    return { fresh: true, key: turnMesKey(msg) };
+}
+// a generation stopped or failed after the rewind: the variant on screen is an old one, put its result back
+function turnSettle() {
+    if (!TURN.pending) return;
+    TURN.pending = false;
+    const rec = turnRec(); const msg = rec ? (getContext().chat || [])[rec.id] : null;
+    if (!rec || !msg || turnRefOk(rec) !== msg) return;
+    const kept = msg.extra && msg.extra.rpg_turn_after;
+    if (kept && kept.key === turnMesKey(msg)) turnApplyKept(rec, kept);
+}
+// the ↻ button on the newest reply: back to before it (the clock's tick is its own, so it ticks again)
+window.__rpgsbTurnRedo = (id) => {
+    const rec = turnRec(); const msg = (getContext().chat || [])[id];
+    if (!rec || rec.id !== id || !msg || turnRefOk(rec) !== msg) return;
+    turnRewind(rec);
+    rec.applied = null;
+    try { const k0 = `${getContext().chatId}#${id}`; if (!bodyTicked.has(k0)) { bodyTicked.add(k0); BODY.onReply(msg.name); } } catch (e) { /* no Character tab */ }
+    rec.applied = turnSnap(rec.name);
+    saveChatDebounced();
+};
+window.__rpgsbTurnKept = (id) => { const msg = (getContext().chat || [])[id]; if (msg) turnKeep(id, turnMesKey(msg)); };
+function turnOnDeleted(len) {
+    const md = getContext().chatMetadata; const rec = turnRec();
+    if (!md || !rec) return;
+    const chat = getContext().chat || [];
+    const ref = TURN.ref;
+    const at = ref ? chat.indexOf(ref) : -1;
+    if (at >= 0) { rec.id = at; return; }                       // an earlier message went: the reply only moved up
+    if (!ref && !(typeof len === 'number' && len <= rec.id)) return;   // can't tell which went: keep it
+    turnRewind(rec);
+    delete md.rpg_sb_turn; TURN.ref = null; TURN.pending = false;
+    try { BODY.journalStart(-1, []); } catch (e) { /* no Character tab */ }
+    saveChatDebounced();
+}
 
 /* ------------------------------------------------------------
    THE SHELL
@@ -6520,6 +7021,9 @@ function bindBondsPane(pane, npc) {
             redraw();
         });
     });
+    // ↻ read the card again — for everyone, not only in GM mode
+    const rescan = pane.querySelector('.tbe-rescan');
+    if (rescan) rescan.addEventListener('click', async (e) => { e.stopPropagation(); await TBE.rescanProfile(npc); });
 
     if (!TBE.settings().gmMode) return;
 
@@ -6537,6 +7041,11 @@ function bindBondsPane(pane, npc) {
     });
     const sel = pane.querySelector('.tbe-gm-stage');
     if (sel) sel.addEventListener('change', (e) => { e.stopPropagation(); npc.stage = sel.value; redraw(); });
+    // the archetype picker in the message's own page: it was drawn there but did nothing
+    const arch = pane.querySelector('.tbe-arch-sel');
+    if (arch) arch.addEventListener('change', (e) => { e.stopPropagation(); TBE.setArch(npc, String(arch.value || '')); });
+    const pin = pane.querySelector('.tbe-arch-pin');
+    if (pin) { pin.addEventListener('click', (e) => e.stopPropagation()); pin.addEventListener('change', (e) => { e.stopPropagation(); TBE.pinArch(npc, pin.checked); }); }
     const reroll = pane.querySelector('.tbe-reroll');
     if (reroll) reroll.addEventListener('click', async (e) => { e.stopPropagation(); await TBE.rerollProfile(npc); });
     const forget = pane.querySelector('.tbe-forget');
@@ -6734,7 +7243,8 @@ jQuery(() => {
 
     // who is in the scene changes with each reply and with the Scene Card: the status note follows
     window.addEventListener('rpg:scene-updated', () => { try { SB.updateContextInjection(); } catch (e) { /* next reply */ } });
-    eventSource.on(event_types.MESSAGE_RECEIVED, async (messageId) => {
+    // one reply counted: the Bonds bookkeeping, the Character tab's clock, the prose read and the status
+    function countReply(messageId, key) {
         try { SB.updateContextInjection(); } catch (e) { console.warn('[RPG Status Bar] note', e); }
         // Bonds first: it is what registers whoever just spoke, so the relationship
         // tab has a page to draw by the time the block is mounted.
@@ -6742,6 +7252,8 @@ jQuery(() => {
         // the Character tab's clock: one more reply (the Scene Card's own clock, when there, moves it instead)
         // (once per message: a swipe or a regeneration fires this again for the same one)
         try { const m0 = getContext().chat[messageId]; const k0 = `${getContext().chatId}#${messageId}`; if (m0 && !m0.is_user && !m0.is_system && !bodyTicked.has(k0)) { bodyTicked.add(k0); BODY.onReply(m0.name); } } catch (e) { console.error('[Character] reply failed:', e); }
+        // the clock's tick is this variant's; what the status reading finds adds to it when kept
+        try { const r0 = turnRec(); if (key && r0 && r0.id === messageId) r0.applied = turnSnap(r0.name); } catch (e) { /* kept later */ }
         // Opt-in, and always after the bookkeeping above: it reads the prose that
         // was just generated rather than deciding anything about it.
         TBE.readCharProse(messageId).catch(e => console.error('[Bonds] prose read failed:', e));
@@ -6749,13 +7261,22 @@ jQuery(() => {
         if (msg && !msg.is_user && !msg.is_system) {
             setTimeout(async () => {
                 try { await SB.processCharacterStatus(messageId, msg.name, false); } catch (e) { console.error('[RPG Status Bar] status failed:', e); }
+                if (key) turnKeep(messageId, key);
                 ensureShell(messageId, msg.name);
                 window.RPGSB_BONDS_REFRESH();
             }, 50);
         }
+    }
+    eventSource.on(event_types.MESSAGE_RECEIVED, async (messageId) => {
+        const how = turnOnReceived(messageId);
+        if (how.skip) return;
+        countReply(messageId, how.key);
     });
 
     eventSource.on(event_types.MESSAGE_SWIPED, async (messageId) => {
+        const how = turnOnSwiped(messageId);
+        if (how === 'generating') return;              // nothing to count yet: the new text comes with MESSAGE_RECEIVED
+        if (how && how.fresh) { countReply(messageId, how.key); return; }   // an older variant never counted here
         // Deliberately NOT onCharacterReply: the turn was already processed and
         // re-running it would tick the pulse twice. Only the prose is re-read, and
         // readCharProse reverts the previous swipe's credit before doing so.
@@ -6768,5 +7289,11 @@ jQuery(() => {
                 window.RPGSB_BONDS_REFRESH();
             }, 50);
         }
+    });
+    if (event_types.MESSAGE_DELETED) eventSource.on(event_types.MESSAGE_DELETED, (len) => turnOnDeleted(len));
+    ['GENERATION_STOPPED', 'GENERATION_ENDED'].forEach(k => { if (event_types[k]) eventSource.on(event_types[k], () => turnSettle()); });
+    eventSource.on(event_types.CHAT_CHANGED, () => {
+        TURN.ref = null; TURN.pending = false;
+        try { const r = turnRec(); if (r) { if (!Array.isArray(r.journal)) r.journal = []; BODY.journalStart(r.id, r.journal); } else BODY.journalStart(-1, []); } catch (e) { /* no Character tab */ }
     });
 });
