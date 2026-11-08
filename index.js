@@ -16,6 +16,56 @@ import { selected_group, groups } from '../../../group-chats.js';
      extension_settings.tavern_bonds_engine   <- Bonds Engine (unchanged)
    ============================================================ */
 
+/* What small local models get wrong in a JSON answer, put right before it is read:
+   quotes inside a text, line breaks inside a text, // comments, a missing comma.
+   Only the punctuation is touched, never the words. Shared by both engines. */
+function repairModelJson(src) {
+    const t0 = String(src || '');
+    let out = '', inS = false, k = 0;
+    const nextSolid = j => { while (j < t0.length && /\s/.test(t0[j])) j++; return j; };
+    for (; k < t0.length; k++) {
+        const c = t0[k];
+        if (inS) {
+            if (c === '\\') { out += c + (t0[k + 1] ?? ''); k++; continue; }
+            if (c === '"') {
+                const j = nextSolid(k + 1), d = t0[j];
+                // a real closing quote is followed by , : } ] or the end; a quote then a new line then "..." is a missing comma
+                const after = d === ',' || d === ':' ? t0[nextSolid(j + 1)] : '';
+                const ends = j >= t0.length || '}]'.includes(d)
+                    || (d === ',' && (after === undefined || '"{[}]/'.includes(after)))           // "...", "next"  — not  "a "ghost", it walks"
+                    || (d === ':' && (after === undefined || /["{\[\d\-tfn]/.test(after)))
+                    || (d === '"' && /[\r\n]/.test(t0.slice(k + 1, j)));
+                if (ends) { inS = false; out += c; }
+                else out += '\\"';
+                continue;
+            }
+            if (c === '\n') { out += '\\n'; continue; }
+            if (c === '\r') continue;
+            if (c === '\t') { out += ' '; continue; }
+            out += c; continue;
+        }
+        if (c === '/' && t0[k + 1] === '/') { while (k < t0.length && t0[k] !== '\n') k++; out += '\n'; continue; }
+        if (c === '/' && t0[k + 1] === '*') { const e = t0.indexOf('*/', k + 2); k = e < 0 ? t0.length : e + 1; continue; }
+        if (c === '"') {
+            // "a" "b", } {, ] [, 5 "b" with no comma between them
+            const prev = out.replace(/\s+$/, '').slice(-1);
+            if (prev && /["}\]\w]/.test(prev) && /\s$/.test(out)) out = out.replace(/\s+$/, '') + ',' + out.match(/\s+$/)[0];   // after a text, an object, a list, a number or true/false/null
+            inS = true; out += c; continue;
+        }
+        if (c === '{' || c === '[') {
+            const prev = out.replace(/\s+$/, '').slice(-1);
+            if (prev && '"}]'.includes(prev)) out = out.replace(/\s+$/, '') + ',' + (out.match(/\s+$/) || [''])[0];
+        }
+        out += c;
+    }
+    return out;
+}// the answer of a model: the text, or (a thinking model) its reasoning, or (a completion server) "text"
+function modelAnswerText(data) {
+    const c0 = (data && data.choices && data.choices[0]) || {};
+    const m = c0.message || {};
+    return String(m.content || c0.text || m.reasoning_content || m.reasoning || '').trim();
+}
+
 /* ============================================================
    ENGINE 1 — RPG STATUS BAR
    ============================================================ */
@@ -53,7 +103,7 @@ const I18N = {
         confirm_ai_generate: "Let AI design 4 custom stats for \"{char}\" from their character card? This replaces the current stats.",
         toast_gen_start: "AI is designing stats from the character card...",
         toast_gen_done: "AI generated 4 stats!",
-        toast_gen_fail: "Stat generation failed.",
+        toast_gen_fail: "Stat generation failed.", toast_gen_why: "The model answered, but not in the needed form (its answer is in the console, F12).",
         toast_no_card: "No character card found for \"{char}\".",
         toast_no_key: "API key is not set!",
         ui_update_every: "Update every:",
@@ -200,7 +250,7 @@ const I18N = {
         confirm_ai_generate: "Пусть ИИ придумает 4 стата для «{char}» по карточке персонажа? Текущие статы будут заменены.",
         toast_gen_start: "ИИ подбирает статы по карточке персонажа...",
         toast_gen_done: "ИИ сгенерировал 4 стата!",
-        toast_gen_fail: "Не удалось сгенерировать статы.",
+        toast_gen_fail: "Не удалось сгенерировать статы.", toast_gen_why: "Модель ответила, но не в нужной форме (её ответ в консоли, F12).",
         toast_no_card: "Карточка персонажа «{char}» не найдена.",
         toast_no_key: "API-ключ не указан!",
         ui_update_every: "Обновлять каждые:",
@@ -614,7 +664,8 @@ function looseJson(content) {
     const m = x.match(/\{[\s\S]*\}/);
     x = m ? m[0] : x;
     try { return JSON.parse(x); } catch (e) { /* tidy and try again */ }
-    return JSON.parse(x.replace(/,\s*([}\]])/g, '$1').replace(/[“”]/g, '"'));
+    try { return JSON.parse(x.replace(/,\s*([}\]])/g, '$1').replace(/[“”]/g, '"')); } catch (e) { /* the punctuation of a local model */ }
+    return JSON.parse(repairModelJson(x).replace(/,\s*([}\]])/g, '$1'));
 }
 async function callStatsAIOnce(system, user) {
     const url = (apiUrl() || 'https://openrouter.ai/api/v1').replace(/\/$/, '') + '/chat/completions';
@@ -634,10 +685,11 @@ async function callStatsAIOnce(system, user) {
         throw new Error(`HTTP ${resp.status} ${detail}`.trim());
     }
     const data = await resp.json();
-    if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) throw new Error("Unexpected AI response");
-    const content = (data.choices[0].message.content || '').trim();
-    const out = looseJson(content);
-    if (!out || !Array.isArray(out.stats) || !out.stats.length) throw new Error('no stats in the answer');
+    if (!data || !data.choices || !data.choices[0]) throw new Error("Unexpected AI response");
+    const content = modelAnswerText(data);
+    let out = null;
+    try { out = looseJson(content); } catch (e) { /* said below */ }
+    if (!out || !Array.isArray(out.stats) || !out.stats.length) { console.warn('[RPG Status Bar] the stats answer could not be read:', content.slice(0, 6000)); throw new Error('no stats in the answer'); }
     return out;
 }
 
@@ -694,7 +746,7 @@ Output ONLY valid JSON: { "stats": [ {"name":"","desc":"","color":"red","value":
         renderDynamicStats();
         updateContextInjection();
         toastr.success(t('toast_gen_done'));
-    } catch (e) { console.error("Stat generation failed:", e); toastr.error(t('toast_gen_fail')); }
+    } catch (e) { console.error("Stat generation failed:", e); toastr.error(/no stats in the answer/.test(String(e && e.message)) ? `${t('toast_gen_fail')} ${t('toast_gen_why')}` : t('toast_gen_fail')); }
 }
 
 /* ============================================================
@@ -827,10 +879,10 @@ Format:
             }
 
             const data = await response.json();
-            if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
+            if (!data || !data.choices || !data.choices[0]) {
                 throw new Error("Unexpected AI response");
             }
-            const content = (data.choices[0].message.content || '').trim();
+            const content = modelAnswerText(data);
             return looseJson(content);   // a code fence or a trailing comma is not a failed update
         } catch (e) {
             if (i === 1) throw (e && e.name === 'AbortError') ? new Error('timeout') : e;
@@ -1576,6 +1628,15 @@ const SB_API = {
     updateContextInjection, observeChat, restoreStatusesOnLoad,
     scheduleReconcile, refreshCastIfChanged, processCharacterStatus, renderInlineStatus,
     resetCast: () => { lastCastKey = ''; },
+    // read only, for the joint moves of RPG Vitals: a character's Trust (or Respect / Affection), 0–100, or null — nothing is created
+    trustOf: (name) => {
+        if (!settings.enabled || !name) return null;
+        const p = settings.profiles && settings.profiles[profileKey(name)];
+        if (!p || !Array.isArray(p.stats)) return null;
+        const find = re => p.stats.find(x => x && re.test(String(x.name || '')) && Number.isFinite(Number(x.value)));
+        const st = find(/trust|доверие/i) || find(/respect|уважени|affection|привязан/i);
+        return st ? Math.max(0, Math.min(100, Number(st.value))) : null;
+    },
     // swipes: one character's values before a reply, and back
     snapProfile: (name) => { if (!settings.enabled || !name) return null; const p = getProfile(name); return JSON.parse(JSON.stringify({ stats: p.stats, summary: p.summary, msgCount: p.msgCount })); },
     restoreProfile: (name, snap) => {
@@ -1595,7 +1656,7 @@ const SB_API = {
         });
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
-        return String(data?.choices?.[0]?.message?.content || '').trim();
+        return modelAnswerText(data);
     }
 };
 return SB_API;
@@ -1817,7 +1878,7 @@ const I18N = {
         res_crit_success: 'CRITICAL SUCCESS', res_strong_success: 'STRONG SUCCESS', res_success: 'SUCCESS',
         res_fail: 'FAILURE', res_hard_fail: 'HARD FAILURE', res_crit_fail: 'CRITICAL FAILURE',
         toast_profile: 'A page for {name} has been started.',
-        toast_profile_err: 'Could not read the character — check URL / key / model.',
+        toast_profile_err: 'Could not read the character — check URL / key / model.', toast_profile_fail: 'Could not read the character', toast_why_shape: 'the model answered, but not in the needed form (its answer is in the console, F12)', toast_why_empty: 'the model gave an empty answer',
         toast_stage: '{name}: {stage}.',
         toast_conflict: '{name} is angry with you.',
         toast_conflict_end: 'You made peace with {name}.',
@@ -1960,7 +2021,7 @@ const I18N = {
         res_crit_success: 'КРИТИЧЕСКИЙ УСПЕХ', res_strong_success: 'УВЕРЕННЫЙ УСПЕХ', res_success: 'УСПЕХ',
         res_fail: 'ПРОВАЛ', res_hard_fail: 'ТЯЖЁЛЫЙ ПРОВАЛ', res_crit_fail: 'КРИТИЧЕСКИЙ ПРОВАЛ',
         toast_profile: 'Заведена страница на {name}.',
-        toast_profile_err: 'Не удалось прочитать персонажа — проверь URL / ключ / модель.',
+        toast_profile_err: 'Не удалось прочитать персонажа — проверь URL / ключ / модель.', toast_profile_fail: 'Не удалось прочитать персонажа', toast_why_shape: 'модель ответила, но не в нужной форме (её ответ в консоли, F12)', toast_why_empty: 'модель вернула пустой ответ',
         toast_stage: '{name}: {stage}.',
         toast_conflict: '{name} злится на тебя.',
         toast_conflict_end: 'Вы помирились с {name}.',
@@ -2504,9 +2565,9 @@ async function callAI(systemPrompt, userPrompt, maxTokens = 400) {
             if (response.status === 429 && i === 0) { await new Promise(r => setTimeout(r, 1500)); continue; }
             if (!response.ok) throw new Error('HTTP ' + response.status);
             const data = await response.json();
-            const content = (data.choices?.[0]?.message?.content || '').trim();
+            const content = modelAnswerText(data);
             const parsed = parseLenientJSON(content);
-            if (parsed === null) throw new Error('bad JSON');
+            if (parsed === null) { console.warn('[Bonds] the answer could not be read:', content.slice(0, 6000)); throw new Error(content ? 'bad JSON' : 'empty answer'); }
             return parsed;
         } catch (e) { if (i === 1) throw e; }
     }
@@ -2520,7 +2581,9 @@ function parseLenientJSON(content) {
     if (start < 0) return null;
     // a local model often wraps the answer in ```json … ``` — the closing fence after the object made
     // the whole answer unreadable ("Could not read the character") although the object itself was fine
-    const frag = content.slice(start).replace(/\s*```\s*$/, '');
+    const frag0 = content.slice(start).replace(/\s*```[\s\S]*$/, '');
+    try { return JSON.parse(frag0); } catch (e) { /* the punctuation of a local model, then the first whole object, then repair below */ }
+    const frag = repairModelJson(frag0).replace(/,\s*([}\]])/g, '$1');
     try { return JSON.parse(frag); } catch (e) { /* the first whole object, then repair below */ }
     {
         let s0 = false, e0 = false, d0 = 0;
@@ -2714,8 +2777,10 @@ async function buildProfile(npc, opts = {}) {
         if (g === 'm' || g === 'f') npc.gender = g;
         let arch = String(res.archetype || '').toLowerCase();
         const base = ARCHETYPES[arch] ? clone(ARCHETYPES[arch]) : clone(ARCHETYPES.pragmatist);
-        for (const k of TRAITS) if (Number.isFinite(+res[k])) base[k] = clamp(+res[k], 0, 100);
-        const scored = TRAITS.filter(k => Number.isFinite(+res[k])).length >= 6;
+        // a local model may write a score as "75/100", "70-80" or "~65": the first number is the score
+        const numOf = v => { if (typeof v === 'number') return v; const m = String(v ?? '').match(/-?\d+(?:\.\d+)?/); return m ? +m[0] : NaN; };
+        for (const k of TRAITS) if (Number.isFinite(numOf(res[k]))) base[k] = clamp(numOf(res[k]), 0, 100);
+        const scored = TRAITS.filter(k => Number.isFinite(numOf(res[k]))).length >= 6;
         // neither an archetype nor scores came back: that is no answer — not a pragmatist
         if (!scored && !ARCHETYPES[arch]) throw new Error('no profile in the answer');
         if (scored && (arch === 'pragmatist' || !ARCHETYPES[arch])) arch = nearestArch(base);
@@ -2730,7 +2795,8 @@ async function buildProfile(npc, opts = {}) {
         console.warn('[Bonds] profile failed', e);
         // Same reasoning: a failed request must not count as "already profiled".
         npc.profiled = false;
-        toastr.warning(t('toast_profile_err'));
+        const why = /bad JSON|no profile/.test(String(e && e.message)) ? t('toast_why_shape') : /empty answer/.test(String(e && e.message)) ? t('toast_why_empty') : '';
+        toastr.warning(why ? `${t('toast_profile_fail')} — ${why}` : t('toast_profile_err'));
     }
 }
 
@@ -6570,6 +6636,11 @@ function init() {
 
 /* ---------------- the bridge: the RPG Engine's backpack hands things over through it ---------------- */
 window.RPG = window.RPG || {};
+// read only: the bonds others may look at (RPG Vitals' joint moves read Trust)
+window.RPG.bonds = Object.assign(window.RPG.bonds || {}, {
+    available: true,
+    trust: (name) => { try { return SB.trustOf(String(name || '')); } catch (e) { return null; } }
+});
 window.RPG.body = {
     available: true,
     isEnabled: () => on() && !!settings.slots,
