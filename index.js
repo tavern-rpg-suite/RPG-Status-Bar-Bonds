@@ -21,22 +21,25 @@ import { selected_group, groups } from '../../../group-chats.js';
    Only the punctuation is touched, never the words. Shared by both engines. */
 function repairModelJson(src) {
     const t0 = String(src || '');
-    let out = '', inS = false, k = 0;
+    let out = '', inS = false, q = '"', isKey = false, k = 0;
+    const stack = [];   // the open { and [ around
     const nextSolid = j => { while (j < t0.length && /\s/.test(t0[j])) j++; return j; };
     for (; k < t0.length; k++) {
         const c = t0[k];
         if (inS) {
-            if (c === '\\') { out += c + (t0[k + 1] ?? ''); k++; continue; }
-            if (c === '"') {
+            if (c === '\\') { if (t0[k + 1] === "'") out += "'"; else out += c + (t0[k + 1] ?? ''); k++; continue; }
+            if (c === '"' && q === "'") { out += '\\"'; continue; }                 // 'say "no"' -> "say \"no\""
+            if (isKey && (c === ':' || c === '\n')) { inS = false; out += '"' + (c === ':' ? ':' : '\n'); continue; }   // "fatigue: 5  -> "fatigue": 5
+            if (c === q) {
                 const j = nextSolid(k + 1), d = t0[j];
                 // a real closing quote is followed by , : } ] or the end; a quote then a new line then "..." is a missing comma
                 const after = d === ',' || d === ':' ? t0[nextSolid(j + 1)] : '';
                 const ends = j >= t0.length || '}]'.includes(d)
-                    || (d === ',' && (after === undefined || '"{[}]/'.includes(after)))           // "...", "next"  — not  "a "ghost", it walks"
-                    || (d === ':' && (after === undefined || /["{\[\d\-tfn]/.test(after)))
+                    || (d === ',' && (after === undefined || '"\'{[}]/'.includes(after)))           // "...", "next"  — not  "a "ghost", it walks"
+                    || (d === ':' && (after === undefined || /["'{\[\d\-tfn]/.test(after)))
                     || (d === '"' && /[\r\n]/.test(t0.slice(k + 1, j)));
-                if (ends) { inS = false; out += c; }
-                else out += '\\"';
+                if (ends) { inS = false; out += '"'; }
+                else out += q === '"' ? '\\"' : "'";
                 continue;
             }
             if (c === '\n') { out += '\\n'; continue; }
@@ -46,20 +49,25 @@ function repairModelJson(src) {
         }
         if (c === '/' && t0[k + 1] === '/') { while (k < t0.length && t0[k] !== '\n') k++; out += '\n'; continue; }
         if (c === '/' && t0[k + 1] === '*') { const e = t0.indexOf('*/', k + 2); k = e < 0 ? t0.length : e + 1; continue; }
-        if (c === '"') {
+        if (c === '"' || c === "'") {
             // "a" "b", } {, ] [, 5 "b" with no comma between them
             const prev = out.replace(/\s+$/, '').slice(-1);
+            // a name in an object (not a value, not an item of a list): "fatigue: 5 lost its closing quote
+            q = c; isKey = stack[stack.length - 1] === '{' && prev !== ':';
             if (prev && /["}\]\w]/.test(prev) && /\s$/.test(out)) out = out.replace(/\s+$/, '') + ',' + out.match(/\s+$/)[0];   // after a text, an object, a list, a number or true/false/null
-            inS = true; out += c; continue;
+            inS = true; out += '"'; continue;
         }
+        if (c === '}' || c === ']') stack.pop();
         if (c === '{' || c === '[') {
+            stack.push(c);
             const prev = out.replace(/\s+$/, '').slice(-1);
             if (prev && '"}]'.includes(prev)) out = out.replace(/\s+$/, '') + ',' + (out.match(/\s+$/) || [''])[0];
         }
         out += c;
     }
     return out;
-}// the answer of a model: the text, or (a thinking model) its reasoning, or (a completion server) "text"
+}
+// the answer of a model: the text, or (a thinking model) its reasoning, or (a completion server) "text"
 function modelAnswerText(data) {
     const c0 = (data && data.choices && data.choices[0]) || {};
     const m = c0.message || {};
