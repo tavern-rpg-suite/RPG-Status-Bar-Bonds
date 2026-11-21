@@ -1,6 +1,7 @@
 import { getContext, extension_settings } from '../../../extensions.js';
 import { eventSource, event_types, saveChatDebounced, saveSettingsDebounced, saveSettings as stSaveSettings, setExtensionPrompt, extension_prompt_roles, characters } from '../../../../script.js';
 import { selected_group, groups } from '../../../group-chats.js';
+import './suite-core.js';   // the suite's shared core: one seal for the floating buttons, the request queue, one "when and where"
 
 /* ============================================================
    RPG STATUS BAR + TAVERN BONDS ENGINE  —  merged build
@@ -169,6 +170,8 @@ const I18N = {
         inline_analyzing: "Analyzing...",
         inline_error: "Error: {char}",
         inline_retry: "Retry",
+        inline_unread: "Not read yet",
+        inline_read: "Read",
         inline_recalc: "Recalculate",
         inline_recalc_title: "Recalculate status at this point",
         inline_toggle_title: "Show / hide status",
@@ -316,6 +319,8 @@ const I18N = {
         inline_analyzing: "Анализирую...",
         inline_error: "Ошибка: {char}",
         inline_retry: "Повторить",
+        inline_unread: "Ещё не прочитано",
+        inline_read: "Прочитать",
         inline_recalc: "Пересчитать",
         inline_recalc_title: "Пересчитать статус на этом моменте",
         inline_toggle_title: "Показать / скрыть статус",
@@ -859,8 +864,12 @@ Format:
         // forever: there was no timeout anywhere on this path, and the catch below
         // can only report a request that actually finished. An abort turns a hang
         // into an ordinary error the panel already knows how to draw.
+        // How long: 45 s used to cover everything — but a local model answers the suite one request at a time,
+        // after the tavern's own reply, so this one often waited its turn longer than that and was given up on
+        // while the model was about to write it (the answer then came with nobody listening), sent again (one
+        // more in the line) and failed. A local server now gets 5 minutes, a remote one 2.
         const ctl = new AbortController();
-        const bell = setTimeout(() => ctl.abort(), 45000);
+        const bell = setTimeout(() => ctl.abort(), isLocalEndpoint(endpointUrl) ? 300000 : 120000);
         try {
             const response = await fetch(endpointUrl, {
                 method: 'POST',
@@ -893,7 +902,8 @@ Format:
             const content = modelAnswerText(data);
             return looseJson(content);   // a code fence or a trailing comma is not a failed update
         } catch (e) {
-            if (i === 1) throw (e && e.name === 'AbortError') ? new Error('timeout') : e;
+            if (e && e.name === 'AbortError') throw new Error('timeout');   // it is still being written there: never sent twice
+            if (i === 1) throw e;
         } finally { clearTimeout(bell); }
     }
 }
@@ -1016,7 +1026,43 @@ function renderInlineStatus(messageId, charName, statsData, isLoading = false, i
     if (typeof window.RPGSB_SYNC === 'function') window.RPGSB_SYNC(container);
 }
 
-async function processCharacterStatus(messageId, charName, forceUpdate = false) {
+/* A reply with no reading yet (its reading was dropped, or the chat was reopened before it came): the newest
+   one says so and offers to be read — there used to be no button at all, the block showed only its other tabs. */
+const statusBusy = new Set();     // `${chatId}#${messageId}#${name}` being read right now
+function renderUnread(messageId, charName) {
+    const msg = (getContext().chat || [])[messageId];
+    if (!msg || msg.is_user || msg.is_system || msg.extra?.rpg_status?.[charName]) return;
+    if (statusBusy.has(`${getContext().chatId}#${messageId}#${charName}`)) return;     // it is being read: the spinner says so
+    const container = (typeof window.RPGSB_SHELL === 'function') ? window.RPGSB_SHELL(messageId, charName) : null;
+    const pane = container && container.querySelector('.rpg-pane-status');
+    if (!pane) return;
+    const header = container.querySelector('.rpg-inline-header');
+    if (header) {
+        header.classList.remove('rpg-header-critical');
+        const ico = header.querySelector('.rpg-header-left i'); if (ico) ico.className = 'fa-solid fa-heart-pulse';
+        const ttl = header.querySelector('.rpg-header-title'); if (ttl) ttl.textContent = t('inline_status', { char: charName });
+        const ms = header.querySelector('.rpg-mini-summary'); if (ms) ms.textContent = t('inline_unread');
+    }
+    container.__sbPaint = null; pane.removeAttribute('data-has');
+    pane.innerHTML = `<div class="rpg-body-footer"><div class="rpg-status-summary">${escapeHtml(t('inline_unread'))}</div>
+        <button class="rpg-force-update" data-id="${messageId}" data-char="${escapeHtml(charName)}"><i class="fa-solid fa-rotate-right"></i> ${escapeHtml(t('inline_read'))}</button></div>`;
+    const btn = pane.querySelector('.rpg-force-update');
+    btn.addEventListener('click', async (e) => { e.stopPropagation(); btn.classList.add('rpg-force-spinning'); await processCharacterStatus(messageId, charName, true); });
+    if (typeof window.RPGSB_SYNC === 'function') window.RPGSB_SYNC(container);
+}
+function newestCharMessageId() {
+    const chat = getContext().chat || [];
+    for (let i = chat.length - 1; i >= 0; i--) { const m = chat[i]; if (m && !m.is_user && !m.is_system) return i; }
+    return -1;
+}
+// a reading that will not be used: what this reply had before comes back, or it says it is unread
+function settleDropped(messageId, charName) {
+    const msg = (getContext().chat || [])[messageId];
+    if (msg && msg.extra?.rpg_status?.[charName]) renderInlineStatus(messageId, charName, msg.extra.rpg_status[charName]);
+    else renderUnread(messageId, charName);
+}
+
+async function processCharacterStatus(messageId, charName, forceUpdate = false, again = 0) {
     if (!settings.enabled) return;
 
     const context = getContext();
@@ -1031,8 +1077,8 @@ async function processCharacterStatus(messageId, charName, forceUpdate = false) 
         return;
     }
 
-    let needsApiCall = forceUpdate;
-    if (!forceUpdate) {
+    let needsApiCall = forceUpdate || again > 0;
+    if (!needsApiCall) {
         profile.msgCount += 1;
         if (profile.msgCount >= settings.updateFrequency) {
             needsApiCall = true;
@@ -1053,8 +1099,10 @@ async function processCharacterStatus(messageId, charName, forceUpdate = false) 
 
     // ↻ on the newest reply reads it again from scratch: what that reply changed (the Character tab, the
     // pockets, the backpack, these values) is taken back first, so the new reading replaces it, not adds to it
-    if (forceUpdate && typeof window.__rpgsbTurnRedo === 'function') { try { window.__rpgsbTurnRedo(messageId); } catch (e) { console.warn('[RPG Status Bar] redo', e); } }
+    if (forceUpdate && !again && typeof window.__rpgsbTurnRedo === 'function') { try { window.__rpgsbTurnRedo(messageId); } catch (e) { console.warn('[RPG Status Bar] redo', e); } }
     renderInlineStatus(messageId, charName, null, true, false);
+    const busyKey = `${context.chatId}#${messageId}#${charName}`;
+    statusBusy.add(busyKey);
     // a swipe or a regeneration while the model thinks: the answer is about a text no longer on screen
     const myText = msg.mes, mySwipe = msg.swipe_id;
     const myChat = context.chatId;   // message ids overlap between chats: a result arriving after a
@@ -1075,7 +1123,15 @@ async function processCharacterStatus(messageId, charName, forceUpdate = false) 
 
         const result = await calculateNewStats(historyText, charName);
         if (getContext().chatId !== myChat) return;   // chat changed while the AI was thinking
-        if (getContext().chat[messageId] !== msg || msg.mes !== myText || msg.swipe_id !== mySwipe) return;   // swiped meanwhile
+        if (getContext().chat[messageId] !== msg || msg.swipe_id !== mySwipe) { statusBusy.delete(busyKey); settleDropped(messageId, charName); return; }   // swiped meanwhile
+        // The same reply, but its text changed meanwhile — edited, or rewritten by another extension (Dual-Model
+        // Thoughts' auto rewrite lands right while this reads): the reading is of a text no longer there. It used
+        // to be dropped without a word, and the reply was never read at all; now the new text is read.
+        if (msg.mes !== myText) {
+            statusBusy.delete(busyKey);
+            if (again < 2) return processCharacterStatus(messageId, charName, forceUpdate, again + 1);
+            settleDropped(messageId, charName); return;
+        }
 
         const deltas = {};
         if (result.stats) {
@@ -1111,7 +1167,7 @@ async function processCharacterStatus(messageId, charName, forceUpdate = false) 
     } catch (e) {
         console.error(`Status Update Failed for ${charName}:`, e);
         renderInlineStatus(messageId, charName, e.message, false, true);
-    }
+    } finally { statusBusy.delete(busyKey); }
 }
 
 function bandWord(val, dynamicColor) {
@@ -1590,6 +1646,13 @@ function reconcileStatuses() {
             if (!findStatusContainer(el, charName)) renderInlineStatus(id, charName, data[charName]);
         });
     });
+    // the newest reply with no reading at all: it offers to be read (once — its pane is then no longer empty)
+    const nid = newestCharMessageId(); const nm = chat[nid];
+    if (nm && nm.name && !(nm.extra && nm.extra.rpg_status && nm.extra.rpg_status[nm.name])) {
+        const el = document.querySelector(`#chat .mes[mesid="${nid}"]`);
+        const c0 = el && findStatusContainer(el, nm.name); const pane = c0 && c0.querySelector('.rpg-pane-status');
+        if (el && (!pane || !pane.innerHTML.trim())) renderUnread(nid, nm.name);
+    }
 }
 function scheduleReconcile() { clearTimeout(reconcileTimer); reconcileTimer = setTimeout(reconcileStatuses, 150); }
 
@@ -1634,7 +1697,7 @@ const SB_API = {
     settings: () => settings,
     loadSettings, pruneOldStates, mountSettings,
     updateContextInjection, observeChat, restoreStatusesOnLoad,
-    scheduleReconcile, refreshCastIfChanged, processCharacterStatus, renderInlineStatus,
+    scheduleReconcile, refreshCastIfChanged, processCharacterStatus, renderInlineStatus, renderUnread, newestCharMessageId,
     resetCast: () => { lastCastKey = ''; },
     // read only, for the joint moves of RPG Vitals: a character's Trust (or Respect / Affection), 0–100, or null — nothing is created
     trustOf: (name) => {
@@ -5799,12 +5862,31 @@ function giveToPlayer(charName, nameOrId, quiet = false) {
 function liveFx(c) {
     const s = chatState();
     if (!settings.intimFx || !c || !s || !Array.isArray(c.fx)) return [];
+    mergeFx(c);
     return c.fx.filter(f => f && f.name && Number.isFinite(f.until) && s.turn < f.until);
+}
+/* One feeling is one line. The model sometimes calls the same feeling a buff once and a debuff the next time;
+   it used to stand twice ("Afterglow ×2" and "Afterglow"). Now the same name (in other words too) is one effect:
+   the stacks add up, the longer time stays, and the newest reading (buff or debuff, its words) is the one kept. */
+function mergeFx(c) {
+    if (!c || !Array.isArray(c.fx) || c.fx.length < 2) return;
+    const out = [];
+    for (const f of c.fx) {
+        if (!f || !f.name) continue;
+        const was = out.find(o => alike(o.name, f.name));
+        if (!was) { out.push(f); continue; }
+        was.count = (was.count || 1) + (f.count || 1);
+        was.until = Math.max(was.until || 0, f.until || 0);
+        was.kind = f.kind === 'debuff' ? 'debuff' : 'buff';      // the later one is the newer reading
+        if (f.desc) was.desc = f.desc;
+    }
+    if (out.length !== c.fx.length) c.fx = out;
 }
 function takeFx(c, list) {
     const s = chatState(); if (!s || !c) return;
     if (!Array.isArray(c.fx)) c.fx = [];
     c.fx = c.fx.filter(f => f && Number.isFinite(f.until) && s.turn < f.until);   // the faded ones go
+    mergeFx(c);                                                                    // and doubles saved before become one
     (Array.isArray(list) ? list : []).slice(0, 2).forEach(e => {
         if (!e || typeof e !== 'object') return;
         const name = String(e.name || '').replace(/\s+/g, ' ').trim().slice(0, 40);
@@ -5813,8 +5895,9 @@ function takeFx(c, list) {
         const turns = clamp(parseInt(e.turns, 10) || 6, 3, 12);
         const desc = String(e.desc || '').replace(/\s+/g, ' ').trim().slice(0, 160);
         // the same again (in other words too): it stacks as in RPG Vitals — ×N, the longer of the two, the newest feeling
-        const was = c.fx.find(f => (f.kind === 'debuff' ? 'debuff' : 'buff') === kind && alike(f.name, name));
-        if (was) { was.count = (was.count || 1) + 1; was.until = Math.max(was.until, s.turn + turns); if (desc) was.desc = desc; logIt(c, '♥ ' + was.name + ' ×' + was.count); return; }
+        // (whether the model calls it a buff or a debuff this time: one feeling, one line — the newest reading kept)
+        const was = c.fx.find(f => alike(f.name, name));
+        if (was) { was.count = (was.count || 1) + 1; was.until = Math.max(was.until, s.turn + turns); was.kind = kind; if (desc) was.desc = desc; logIt(c, '♥ ' + was.name + ' ×' + was.count); return; }
         c.fx.push({ id: genId(), name, kind, desc, until: s.turn + turns, src: 'intimacy' });
         logIt(c, '♥ ' + name);
     });
@@ -7315,6 +7398,8 @@ jQuery(() => {
                 SB.renderInlineStatus(messageId, msg.name, msg.extra.rpg_status[msg.name]);
             } else {
                 ensureShell(messageId, msg.name);
+                // the newest reply with no reading: it offers to be read (unless it is being read right now)
+                if (sbOn() && Number(messageId) === SB.newestCharMessageId()) setTimeout(() => { try { SB.renderUnread(Number(messageId), msg.name); } catch (e) { /* next time */ } }, 120);
             }
         }
         SB.scheduleReconcile();
