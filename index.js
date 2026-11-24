@@ -172,6 +172,8 @@ const I18N = {
         inline_retry: "Retry",
         inline_unread: "Not read yet",
         inline_read: "Read",
+        inline_slow: "The model is slow — still waiting for its answer. It will be put in as soon as it comes.",
+        inline_read_again: "Read again",
         inline_recalc: "Recalculate",
         inline_recalc_title: "Recalculate status at this point",
         inline_toggle_title: "Show / hide status",
@@ -321,6 +323,8 @@ const I18N = {
         inline_retry: "Повторить",
         inline_unread: "Ещё не прочитано",
         inline_read: "Прочитать",
+        inline_slow: "Модель отвечает долго — жду её ответ. Он встанет сюда, как только придёт.",
+        inline_read_again: "Прочитать заново",
         inline_recalc: "Пересчитать",
         inline_recalc_title: "Пересчитать статус на этом моменте",
         inline_toggle_title: "Показать / скрыть статус",
@@ -818,7 +822,7 @@ function getActiveCharacters() {
     return activeChars;
 }
 
-async function calculateNewStats(historyText, charName) {
+async function calculateNewStats(historyText, charName, onSlow) {
     if (!apiKey()) throw new Error("API key is not set!");
     const profile = getProfile(charName);
     // the Character tab's question rides along in this same request (nothing when it is off)
@@ -868,8 +872,14 @@ Format:
         // after the tavern's own reply, so this one often waited its turn longer than that and was given up on
         // while the model was about to write it (the answer then came with nobody listening), sent again (one
         // more in the line) and failed. A local server now gets 5 minutes, a remote one 2.
+        // (2.0.3) The answer was still thrown away: a local server keeps writing after the page gives up (its
+        // console shows the whole answer), the reading never came, and only a second press by hand put it in.
+        // Now the deadline does not give up — it only says the model is slow and offers to read again; the answer
+        // is put in whenever it comes. Only a request that is surely dead (30 min local, 5 min remote) is dropped.
         const ctl = new AbortController();
-        const bell = setTimeout(() => ctl.abort(), isLocalEndpoint(endpointUrl) ? 300000 : 120000);
+        const local = isLocalEndpoint(endpointUrl);
+        const slow = setTimeout(() => { try { if (typeof onSlow === 'function') onSlow(); } catch (e) { /* only a note */ } }, local ? 300000 : 120000);
+        const bell = setTimeout(() => ctl.abort(), local ? 1800000 : 300000);
         try {
             const response = await fetch(endpointUrl, {
                 method: 'POST',
@@ -904,7 +914,7 @@ Format:
         } catch (e) {
             if (e && e.name === 'AbortError') throw new Error('timeout');   // it is still being written there: never sent twice
             if (i === 1) throw e;
-        } finally { clearTimeout(bell); }
+        } finally { clearTimeout(bell); clearTimeout(slow); }
     }
 }
 
@@ -1050,6 +1060,26 @@ function renderUnread(messageId, charName) {
     btn.addEventListener('click', async (e) => { e.stopPropagation(); btn.classList.add('rpg-force-spinning'); await processCharacterStatus(messageId, charName, true); });
     if (typeof window.RPGSB_SYNC === 'function') window.RPGSB_SYNC(container);
 }
+// the reading is late: the spinner gives way to a word and a button; the answer is still awaited and put in
+function renderSlow(messageId, charName) {
+    const container = (typeof window.RPGSB_SHELL === 'function') ? window.RPGSB_SHELL(messageId, charName) : null;
+    const pane = container && container.querySelector('.rpg-pane-status');
+    if (!pane) return;
+    const header = container.querySelector('.rpg-inline-header');
+    if (header) {
+        const ico = header.querySelector('.rpg-header-left i'); if (ico) ico.className = 'fa-solid fa-hourglass-half';
+        const ms = header.querySelector('.rpg-mini-summary'); if (ms) ms.textContent = t('inline_analyzing');
+    }
+    container.__sbPaint = null; pane.removeAttribute('data-has');
+    pane.innerHTML = `<div class="rpg-body-footer"><div class="rpg-status-summary rpg-loading-dots">${escapeHtml(t('inline_slow'))}</div>
+        <button class="rpg-force-update" data-id="${messageId}" data-char="${escapeHtml(charName)}"><i class="fa-solid fa-rotate-right"></i> ${escapeHtml(t('inline_read_again'))}</button></div>`;
+    const btn = pane.querySelector('.rpg-force-update');
+    btn.addEventListener('click', async (e) => { e.stopPropagation(); btn.classList.add('rpg-force-spinning'); await processCharacterStatus(messageId, charName, true); });
+    if (typeof window.RPGSB_SYNC === 'function') window.RPGSB_SYNC(container);
+}
+/* Readings of one reply that overlap (a late one, and «Read again» pressed meanwhile): the first answer to
+   come is put in, the later ones are dropped — two answers would count what was eaten or found twice. */
+const statusRuns = new Map();     // busyKey → { n: readings in flight, applied: one was put in }
 function newestCharMessageId() {
     const chat = getContext().chat || [];
     for (let i = chat.length - 1; i >= 0; i--) { const m = chat[i]; if (m && !m.is_user && !m.is_system) return i; }
@@ -1103,6 +1133,11 @@ async function processCharacterStatus(messageId, charName, forceUpdate = false, 
     renderInlineStatus(messageId, charName, null, true, false);
     const busyKey = `${context.chatId}#${messageId}#${charName}`;
     statusBusy.add(busyKey);
+    let run = statusRuns.get(busyKey);
+    if (!run) { run = { n: 0, applied: false }; statusRuns.set(busyKey, run); }
+    run.n++;
+    let left = false;
+    const leave = () => { if (left) return; left = true; if (--run.n <= 0) { statusRuns.delete(busyKey); statusBusy.delete(busyKey); } };
     // a swipe or a regeneration while the model thinks: the answer is about a text no longer on screen
     const myText = msg.mes, mySwipe = msg.swipe_id;
     const myChat = context.chatId;   // message ids overlap between chats: a result arriving after a
@@ -1121,17 +1156,20 @@ async function processCharacterStatus(messageId, charName, forceUpdate = false, 
         while (newFrom - 1 >= startIdx && chat[newFrom - 1] && chat[newFrom - 1].is_user) newFrom--;
         const historyText = historySlice.map(m => `${bodyOn && chat.indexOf(m) === newFrom ? '=== NEW ===\n' : ''}${m.name}: ${m.mes}`).join('\n\n');
 
-        const result = await calculateNewStats(historyText, charName);
+        const result = await calculateNewStats(historyText, charName, () => { if (!run.applied && getContext().chatId === myChat) renderSlow(messageId, charName); });
         if (getContext().chatId !== myChat) return;   // chat changed while the AI was thinking
-        if (getContext().chat[messageId] !== msg || msg.swipe_id !== mySwipe) { statusBusy.delete(busyKey); settleDropped(messageId, charName); return; }   // swiped meanwhile
+        if (run.applied) return;                      // another reading of this reply came first and was put in
+        if (getContext().chat[messageId] !== msg || msg.swipe_id !== mySwipe) { leave(); if (!statusRuns.has(busyKey)) settleDropped(messageId, charName); return; }   // swiped meanwhile
         // The same reply, but its text changed meanwhile — edited, or rewritten by another extension (Dual-Model
         // Thoughts' auto rewrite lands right while this reads): the reading is of a text no longer there. It used
         // to be dropped without a word, and the reply was never read at all; now the new text is read.
         if (msg.mes !== myText) {
-            statusBusy.delete(busyKey);
+            leave();
+            if (statusRuns.has(busyKey)) return;      // a newer reading is already on its way
             if (again < 2) return processCharacterStatus(messageId, charName, forceUpdate, again + 1);
             settleDropped(messageId, charName); return;
         }
+        run.applied = true;
 
         const deltas = {};
         if (result.stats) {
@@ -1166,8 +1204,9 @@ async function processCharacterStatus(messageId, charName, forceUpdate = false, 
 
     } catch (e) {
         console.error(`Status Update Failed for ${charName}:`, e);
-        renderInlineStatus(messageId, charName, e.message, false, true);
-    } finally { statusBusy.delete(busyKey); }
+        // another reading of this reply is still on its way, or already put in: its result stays on screen
+        if (!run.applied && run.n <= 1 && getContext().chatId === myChat) renderInlineStatus(messageId, charName, e.message, false, true);
+    } finally { leave(); }
 }
 
 function bandWord(val, dynamicColor) {
